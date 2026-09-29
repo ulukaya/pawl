@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="pawl: a hook holding a gear">
+  <!-- Gear, centre (231,281): 8 blunt trapezoid teeth, root r=128 (30 deg wide),
+       tip r=165 (16 deg wide), 45 deg step, first tooth centred at -77.5 deg.
+       Inner ring r=68. All geometry stays inside 51..461.
+       Paint order: pawl first, gear over the pawl tip, amber flanks last. -->
+  <g fill="none" stroke="#0F766E" stroke-width="30" stroke-linejoin="round" stroke-linecap="round">
+    <!-- pawl: pivot ring upper right, short hook curving down-left into the
+         valley at -55 deg, tip ends 6px above the root circle -->
+    <circle cx="400" cy="105" r="34"/>
+    <path d="M 372.4,124.8 Q 351.2,86.4 307.9,171.2"/>
+    <polygon points="225.4,153.1 243.9,116.5 288.8,126.4 290.1,167.5 317.5,186.6 356.5,173.8 381.1,212.6 353.1,242.5 358.9,275.4 395.5,293.9 385.6,338.8 344.5,340.1 325.4,367.5 338.2,406.5 299.4,431.1 269.5,403.1 236.6,408.9 218.1,445.5 173.2,435.6 171.9,394.5 144.5,375.4 105.5,388.2 80.9,349.4 108.9,319.5 103.1,286.6 66.5,268.1 76.4,223.2 117.5,221.9 136.6,194.5 123.8,155.5 162.6,130.9 192.5,158.9"/>
+    <circle cx="231" cy="281" r="68"/>
+  </g>
+  <!-- amber: the two tooth flanks facing the pawl tip -->
+  <g fill="none" stroke="#F59E0B" stroke-width="30" stroke-linejoin="round" stroke-linecap="round">
+    <line x1="290.1" y1="167.5" x2="288.8" y2="126.4"/>
+    <line x1="317.5" y1="186.6" x2="356.5" y2="173.8"/>
+  </g>
+</svg>

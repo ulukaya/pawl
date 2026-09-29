@@ -1,0 +1,72 @@
+{
+  "pawl-send-gates": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "run_command|run_shell_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_hook.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "pawl-destructive-git-guard": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "run_command|run_shell_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_git_hook.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
+  "pawl-poll-loop-guard": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "run_command|run_shell_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_poll_hook.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
+  "pawl-oscillation-breaker": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_oscillation_hook.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
+  "pawl-idle-task-gate": {
+    "enabled": true,
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python3 -B hooks/pawl_stop_hook.py",
+        "timeout": 15
+      }
+    ]
+  }
+}

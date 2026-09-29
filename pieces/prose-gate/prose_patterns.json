@@ -1,0 +1,339 @@
+{
+ "version": 1,
+ "planes": {
+  "chat": {
+   "fail_above": 3.0,
+   "family_free": 2
+  },
+  "deliverable": {
+   "fail_above": 6.0,
+   "family_free": 4
+  }
+ },
+ "patterns": [
+  {
+   "code": "cb_not_x_but_y",
+   "family": "cb_not_x_but_y",
+   "plane": "both",
+   "pattern": "\\bnot\\s+(?:only\\s+|just\\s+|merely\\s+)?(?:a|an|the)?\\s*[\\w-]+(?:\\s+[\\w-]+){0,3},?\\s+but\\s+(?:rather\\s+)?(?:a|an|the)?\\s*[\\w-]+",
+   "threshold_per_1000w": 1.5,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "neg_parallelism_split",
+   "family": "neg_parallelism_split",
+   "plane": "both",
+   "pattern": "(?:\\b(?:It|This|That|The\\s+\\w+)(?:'s|\\u2019s|\\s+is|\\s+was)\\s+not\\s+[^.!?]{1,60}[.!?])\\s+(?:It|This|That|The\\s+\\w+)(?:'s|\\u2019s|\\s+is|\\s+was)\\s",
+   "threshold_per_1000w": 0.4,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "not_x_not_y_just_z",
+   "family": "not_x_not_y_just_z",
+   "plane": "both",
+   "pattern": "(?m)\\bNot\\s+[^.!?]{1,30}\\.\\s*Not\\s+[^.!?]{1,30}\\.\\s*(?:Just|Only|Simply)\\b",
+   "threshold_per_1000w": 0.0,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "preamble_throat_clearing",
+   "family": "preamble_throat_clearing",
+   "plane": "chat",
+   "pattern": "(?mi)^\\s*(?:Certainly|Sure[,!]|Of course[,!]|Great question|I'd be happy to|Here(?:'s| is| are)\\s+(?:the|a|what|how)|Below (?:is|are)|In this (?:guide|post|article|section),|Let me (?:start|begin) by)\\b",
+   "threshold_per_1000w": 0.0,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "reasoning_leak",
+   "family": "reasoning_leak",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:let'?s (?:dive in|break (?:this|it) down|unpack|explore)|I want to be (?:exact|clear|precise) about|I should (?:be clear|note) that|what (?:I'?m|this is) (?:doing|about to do)|here'?s (?:what|how) I'?(?:ll|m going to))\\b",
+   "threshold_per_1000w": 0.2,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "compulsive_counting",
+   "family": "compulsive_counting",
+   "plane": "chat",
+   "pattern": "(?i)\\b(?:two|three|four|five|six|seven)\\s+(?:things|reasons|constraints|factors|principles|lessons|takeaways|caveats|points|ways|pillars|themes)\\b",
+   "threshold_per_1000w": 1.0,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "compulsive_counting_doc",
+   "family": "compulsive_counting_doc",
+   "plane": "deliverable",
+   "pattern": "(?i)\\b(?:two|three|four|five|six|seven)\\s+(?:things|reasons|constraints|factors|principles|lessons|takeaways|caveats|points|ways|pillars|themes)\\b",
+   "threshold_per_1000w": 2.5,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "restatement_gloss",
+   "family": "restatement_gloss",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:in other words|put differently|put another way|to put it (?:differently|another way)|that is to say|said differently)\\b",
+   "threshold_per_1000w": 0.8,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "significance_signal",
+   "family": "significance_signal",
+   "plane": "both",
+   "pattern": "(?im)(?:\\bit'?s worth (?:noting|mentioning|pointing out)\\b|\\bthis (?:matters|is important) because\\b|^\\s*Importantly,|\\bthe (?:key|critical) thing (?:here )?is\\b)",
+   "threshold_per_1000w": 1.0,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "self_ranking_claims",
+   "family": "self_ranking_claims",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:the most important (?:point|thing|part|question)|the key insight|the cleanest (?:way|framing|organizing)|the deepest (?:point|issue)|the real question is|crucially,)\\b",
+   "threshold_per_1000w": 1.0,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "corrective_pivot",
+   "family": "corrective_pivot",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:it would be wrong,?\\s*though,?\\s*to|one might (?:think|argue|object)|you might (?:think|expect|assume)|critics? (?:might|would) say|to be fair,)\\b",
+   "threshold_per_1000w": 0.5,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "candor_flag",
+   "family": "candor_flag",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:the honest answer|to be (?:honest|blunt|frank)|frankly,|truth be told|let'?s be honest)\\b",
+   "threshold_per_1000w": 0.3,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "suspense_hook",
+   "family": "suspense_hook",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:here'?s the (?:kicker|thing|catch|twist)|has a name|and that'?s where (?:it|things)|but here'?s (?:the|what))\\b",
+   "threshold_per_1000w": 0.3,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "deflating_tail",
+   "family": "deflating_tail",
+   "plane": "both",
+   "pattern": "(?i),\\s*(?:and no more|nothing more|and nothing else|no more than that)\\s*[.;]",
+   "threshold_per_1000w": 0.3,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "clean_consequence",
+   "family": "clean_consequence",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:falls? (?:out|directly) (?:of|from)|follows? directly|comes? straight (?:out )?(?:of|from)|which is precisely why)\\b",
+   "threshold_per_1000w": 0.5,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "contribution_framing",
+   "family": "contribution_framing",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:supplies the other half|fills? (?:in )?the gap|pins? down (?:something|what|the)|completes the picture|what (?:earlier|previous) accounts? (?:left|missed))\\b",
+   "threshold_per_1000w": 0.5,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "validate_then_precise",
+   "family": "validate_then_precise",
+   "plane": "chat",
+   "pattern": "(?i)\\b(?:you'?re (?:right|correct),?\\s*(?:and|but)|that'?s (?:right|correct),?\\s*and|good (?:question|point)[.,]|is correct,? and (?:it|this) can be)\\b",
+   "threshold_per_1000w": 0.3,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "reflexive_hedging",
+   "family": "reflexive_hedging",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:tends? to|largely|roughly|broadly|generally|somewhat|arguably|relatively|for the most part|with few exceptions|in many ways|more or less)\\b",
+   "threshold_per_1000w": 4.0,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "stakes_inflation",
+   "family": "stakes_inflation",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:fundamentally (?:reshape|change|transform|alter)|the future of \\w+|paradigm shift|everything changes|world-historical|at an? (?:unprecedented|breakneck) (?:pace|scale)|will never be the same)\\b",
+   "threshold_per_1000w": 0.3,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "promotional_superlative",
+   "family": "promotional_superlative",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:seamless(?:ly)?|cutting-edge|game-chang\\w+|revolutioniz\\w+|empower\\w*|elevate[sd]?|supercharge\\w*|unleash\\w*|effortless(?:ly)?|best-in-class)\\b",
+   "threshold_per_1000w": 0.8,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "delve_family",
+   "family": "delve_family",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:delve[sd]?|delving|realm of|tapestry|a myriad of|plethora|testament to|navigat\\w+ the complexit\\w+|underscore[sd]?|in the ever-(?:evolving|changing))\\b",
+   "threshold_per_1000w": 0.4,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "invented_concept_label",
+   "family": "invented_concept_label",
+   "plane": "both",
+   "pattern": "(?i)\\bthe\\s+[a-z]{4,}(?:ion|ity|ing|ment|ance|ence|ility)?\\s+(?:paradox|trap|creep|divide|vacuum|inversion)\\b",
+   "threshold_per_1000w": 0.5,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "think_of_it_as",
+   "family": "think_of_it_as",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:think of it as|imagine a world|picture this|it'?s like having|consider for a moment)\\b",
+   "threshold_per_1000w": 0.3,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "where_it_lives",
+   "family": "where_it_lives",
+   "plane": "both",
+   "pattern": "(?i)\\bwhere (?:it|this|that|the \\w+) (?:lives|sits|belongs|actually sits)\\b",
+   "threshold_per_1000w": 0.3,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "vague_attribution",
+   "family": "vague_attribution",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:experts? (?:say|agree|believe)|studies show|research (?:suggests|shows|indicates)|many (?:believe|argue)|it is (?:widely )?(?:believed|thought|considered))\\b",
+   "threshold_per_1000w": 0.0,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "we_voice",
+   "family": "we_voice",
+   "plane": "deliverable",
+   "pattern": "(?i)\\b(?:we (?:all )?know that|as we(?:'ve| have) seen|let'?s (?:consider|say|suppose)|we can think of (?:it|this) as)\\b",
+   "threshold_per_1000w": 1.0,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "signposted_conclusion",
+   "family": "signposted_conclusion",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:in (?:conclusion|summary)|to sum up|ultimately,|at the end of the day|the bottom line is|final thoughts)\\b",
+   "threshold_per_1000w": 0.5,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "meta_signposting",
+   "family": "meta_signposting",
+   "plane": "deliverable",
+   "pattern": "(?i)\\b(?:below,? I|as (?:noted|mentioned) above|in (?:this|the following) section|the rest of this (?:piece|post|doc|section)|before (?:we|I) (?:dive|get) in|one qualification)\\b",
+   "threshold_per_1000w": 1.2,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "enumerated_prose",
+   "family": "enumerated_prose",
+   "plane": "both",
+   "pattern": "(?i)\\bThe first\\b[^.!?]{0,140}[.!?]\\s*The second\\b",
+   "threshold_per_1000w": 0.5,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "wh_question_header",
+   "family": "wh_question_header",
+   "plane": "deliverable",
+   "pattern": "(?m)^#{1,6}\\s+(?:Why|What|How|When|Where|Who)\\b[^\\n]*\\?\\s*$",
+   "threshold_per_1000w": 1.0,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "the_x_a_y",
+   "family": "the_x_a_y",
+   "plane": "both",
+   "pattern": "(?m)^\\s*The\\s+[\\w\\s]{2,25}\\?\\s+An?\\s+[\\w\\s]{2,25}\\.",
+   "threshold_per_1000w": 0.2,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "smart_quotes_unicode",
+   "family": "smart_quotes_unicode",
+   "plane": "deliverable",
+   "pattern": "[\\u201c\\u201d\\u2018\\u2019]",
+   "threshold_per_1000w": 0.0,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "decorative_emoji_arrows",
+   "family": "decorative_emoji_arrows",
+   "plane": "chat",
+   "pattern": "[\\u2705\\u274c\\u2728\\U0001F680\\U0001F525\\U0001F4A1]",
+   "threshold_per_1000w": 0.0,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "short_fragment_paragraph",
+   "family": "short_fragment_paragraph",
+   "plane": "deliverable",
+   "pattern": "(?m)^(?!\\s*(?:[-*+>#]|\\d+[.)]|```))\\s*\\S[^\\n]{0,45}$(?:\\n\\s*$)",
+   "threshold_per_1000w": 3.0,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "sda_spaced_dash",
+   "family": "sda_spaced_dash",
+   "plane": "both",
+   "pattern": "\\s(?:--|\\u2013)\\s",
+   "threshold_per_1000w": 0.5,
+   "weight": 1,
+   "note": ""
+  },
+  {
+   "code": "reframe_meta",
+   "family": "reframe_meta",
+   "plane": "both",
+   "pattern": "(?i)\\b(?:better posed|the (?:better|real|right|deeper) question is|the question (?:isn'?t|is not|is no longer) (?:whether|if|how)|(?:let'?s|let us) (?:break (?:this|it|that) down|unpack|dig in|dive in|take a step back|zoom out)|think of it (?:as|like)|imagine (?:if|that|you))\\b",
+   "threshold_per_1000w": 0.5,
+   "weight": 1,
+   "note": ""
+  }
+ ]
+}

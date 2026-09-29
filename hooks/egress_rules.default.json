@@ -1,0 +1,20 @@
+{
+  "literals": [
+    "DO NOT FORWARD",
+    "CONFIDENTIAL - INTERNAL"
+  ],
+  "regexes": [
+    {"name": "long-token", "pattern": "[A-Za-z0-9+/_-]{40,}={0,2}"},
+    {"name": "reasoning-tag", "pattern": "<\\s*/?\\s*(thought|reasoning|scratchpad)\\s*>"},
+    {"name": "corp-host", "pattern": "[a-z0-9-]+\\.corp\\.example"}
+  ],
+  "paths": [
+    {"name": "hidden-config-dir", "pattern": "~/\\.[A-Za-z0-9_.-]+/"},
+    {"name": "home-dir", "pattern": "/(home|Users)/[A-Za-z0-9_.-]+/"},
+    {"name": "tmp-state", "pattern": "/tmp/[A-Za-z0-9_.-]+"}
+  ],
+  "email": {
+    "pattern": "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}",
+    "allow": ["example.com"]
+  }
+}

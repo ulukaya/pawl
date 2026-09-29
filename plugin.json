@@ -1,0 +1,11 @@
+{
+  "name": "pawl",
+  "displayName": "Pawl",
+  "description": "Eleven small checks that stop an agent from making the mistakes agents make most: sending too many messages, leaking internal paths or tokens, writing text that reads like a bot, discarding git work, running commands that wait forever, ending a turn with jobs still running, letting test or lint counts creep up, and shipping a bug fix without a failing test first. Plain Python, no model calls, no prompt cost, each check usable on its own, and a report command that tallies what they blocked. Questions: https://github.com/ulukaya/pawl/issues",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "Set up a ratchet baseline for lint and test counts in this repo",
+    "Wrap my nightly cron job with the circuit breaker",
+    "Check this draft with the prose gate before I send it"
+  ]
+}
