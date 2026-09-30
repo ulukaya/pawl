@@ -2,7 +2,7 @@
 
 <img src="assets/logo.svg" width="96" alt="pawl mark: a hook holding a gear">
 
-Plugin for Jetski.
+Plugin for Antigravity.
 
 Questions or bugs: open an issue at https://github.com/ulukaya/pawl/issues
 or email ulukaya@gmail.com.
