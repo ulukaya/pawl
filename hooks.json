@@ -66,6 +66,81 @@
       }
     ]
   },
+  "pawl-noop-edit-guard": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "replace_file_content|multi_replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_noop_edit_hook.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
+  "pawl-zero-width-sanitizer": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "write_to_file|replace_file_content",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_zero_width_hook.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
+  "pawl-conversation-fence": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_fence_hook.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
+  "pawl-reread-guard": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "view_file|run_command|run_shell_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_reread_hook.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
+  "pawl-readonly-pass": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "run_command|run_shell_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_readonly_hook.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
   "pawl-idle-task-gate": {
     "enabled": true,
     "Stop": [

@@ -73,7 +73,7 @@ cp -r /path/to/pawl ~/.gemini/config/plugins/pawl
 python3 -B ~/.gemini/config/plugins/pawl/run_tests.py
 ```
 
-Expected: 14 lines starting `OK`.
+Expected: 19 lines starting `OK`.
 
 In `~/.gemini/config/plugins.json`:
 
@@ -86,10 +86,10 @@ plugin name is `pawl`.
 
 ## What the hooks do
 
-Five hook groups in `hooks.json`: three `PreToolUse` hooks on `run_command`, one
-`PreToolUse` hook on every tool with a `Stop` entry that clears its ring, and
-one `Stop` hook for idle tasks. Each is its own group, so
-you can disable one without the others.
+Ten hook groups in `hooks.json`: three `PreToolUse` gates on `run_command`, the
+oscillation breaker on every tool with a `Stop` entry that clears its ring, five
+guard pieces on edits and reads, and one `Stop` hook for idle tasks. Each is
+its own group, so you can disable one without the others.
 
 ### `pawl-send-gates`: `hooks/pawl_hook.py`
 
@@ -132,6 +132,39 @@ and a growing log read's `EndLine` are dropped before hashing, so three
 `schedule` and at turn end, so cron wakeups never add up. Fails open. Reason
 prefix `[PAWL loop]`.
 
+### `pawl-noop-edit-guard`: `hooks/pawl_noop_edit_hook.py`
+
+Denies a `replace_file_content` whose replacement equals its target, and a
+`multi_replace_file_content` where every chunk is a no-op, sending the agent
+back to `view_file`. Fails open. Reason prefix `[PAWL no-op]`.
+
+### `pawl-zero-width-sanitizer`: `hooks/pawl_zero_width_hook.py`
+
+Strips zero-width space, joiners, BOM, word joiner and soft hyphen from the
+content of `write_to_file` and `replace_file_content` through an `overwrite`
+block, so the write still lands. Never blocks.
+
+### `pawl-conversation-fence`: `hooks/pawl_fence_hook.py`
+
+On every tool, prompts (`force_ask`) before a read of another conversation's
+`brain/<id>/`, its transcript, a sweep of `brain/` or `conversations/`, or
+`conversation_summaries.db`. This conversation and its direct parent or child
+pass. `PAWL_CONVERSATION_FENCE_STRICT=1` denies instead. Fails open. Reason
+prefix `[PAWL fence]`.
+
+### `pawl-reread-guard`: `hooks/pawl_reread_hook.py`
+
+Denies the 11th unbounded read of this conversation's own transcript, or the
+6th read of the same unchanged `SKILL.md` or memory file, in one user turn.
+Bounded reads never count; after three denials in a turn it stands down until
+the next. Fails open. Reason prefix `[PAWL reread]`.
+
+### `pawl-readonly-pass`: `hooks/pawl_readonly_hook.py`
+
+Answers `auto_approve` when every clause of a shell command provably only
+reads, `allow` otherwise. Never denies or asks; every other hook's deny,
+force_ask or ask still wins. `PAWL_READONLY_PASS_OFF=1` turns it off.
+
 ### `pawl-idle-task-gate`: `hooks/pawl_stop_hook.py`
 
 On Stop, lists background tasks from this conversation older than
@@ -160,8 +193,8 @@ allow. Fails open. Reason prefix `[IDLE TASK]`.
 
 ## Pieces
 
-Twelve pieces: eleven checks and `report`, a viewer that tallies what the checks
-blocked.
+Seventeen pieces: fourteen checks, the zero-width sanitizer, the read-only
+pass, and `report`, a viewer that tallies what the checks blocked.
 
 Piece                 | Wire point                 | Command
 --------------------- | -------------------------- | -------
@@ -176,6 +209,11 @@ destructive-git-guard | hook                       | `pieces/destructive-git-gua
 poll-loop-guard       | hook                       | `pieces/poll-loop-guard/poll_loop_guard.py classify "while true; do sleep 5; done"`
 idle-task-gate        | Stop hook                  | `pieces/idle-task-gate/idle_task_gate.py list <conversation-id>`
 oscillation-breaker   | hook, every tool           | `pieces/oscillation-breaker/oscillation_breaker.py check <conversation-id> view_file '{"path": "a"}'`
+noop-edit-guard       | hook, edits                | `pieces/noop-edit-guard/noop_edit_guard.py check replace_file_content '{"TargetContent": "a", "ReplacementContent": "a"}'`
+zero-width-sanitizer  | hook, writes               | `pieces/zero-width-sanitizer/zero_width_sanitizer.py strip < draft.txt`
+readonly-pass         | hook                       | `pieces/readonly-pass/readonly_pass.py check git log -5`
+reread-guard          | hook, reads                | `pieces/reread-guard/reread_guard_hook.py < payload.json`
+conversation-fence    | hook, every tool           | `pieces/conversation-fence/conversation_fence_hook.py < payload.json`
 report                | CLI, retro                 | `pieces/report/report.py --days 7`
 
 Each piece directory has its own `README.md` and tests. One skill,
@@ -189,7 +227,7 @@ python3 -B run_tests.py
 python3 -B check_portable.py
 ```
 
-`run_tests.py` runs the 14 suites. `check_portable.py` exits 1 when the tree
+`run_tests.py` runs the 19 suites. `check_portable.py` exits 1 when the tree
 carries an absolute home path, ships an `agents/` or `mcp_config.json`, uses an
 absolute path in a hook command, imports anything outside the standard library,
 carries a CR byte (CRLF line ending) in any text file, or has a markdown prose

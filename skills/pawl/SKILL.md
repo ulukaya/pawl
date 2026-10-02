@@ -1,6 +1,6 @@
 ---
 name: pawl
-description: "Deterministic gates for agent harnesses. Use when a tool call is denied, prompted or blocked with [PAWL egress], [PAWL prose], [PAWL budget], [PAWL git], [PAWL poll], [PAWL loop] or [IDLE TASK], or before sending a message, discarding work with git, waiting on a background task, fixing a bug with a reproducer, running a scheduled job, or growing an always-loaded prompt file. Routes to 12 stdlib Python pieces; read references/<piece>.md for flags, knobs and how to recover from a deny."
+description: "Deterministic gates for agent harnesses. Use when a tool call is denied, prompted or blocked with [PAWL egress], [PAWL prose], [PAWL budget], [PAWL git], [PAWL poll], [PAWL loop], [PAWL no-op], [PAWL reread], [PAWL fence] or [IDLE TASK], or before sending a message, discarding work with git, waiting on a background task, fixing a bug with a reproducer, running a scheduled job, or growing an always-loaded prompt file. Routes to 17 stdlib Python pieces; read references/<piece>.md for flags, knobs and how to recover from a deny."
 ---
 
 # pawl
@@ -15,6 +15,9 @@ budget, egress rules and gate events share it).
 -   `[PAWL git]` -> `destructive-git-guard.md`
 -   `[PAWL poll]` -> `poll-loop-guard.md`
 -   `[PAWL loop]` -> `oscillation-breaker.md`
+-   `[PAWL no-op]` -> `noop-edit-guard.md`
+-   `[PAWL reread]` -> `reread-guard.md`
+-   `[PAWL fence]` -> `conversation-fence.md`
 -   `[IDLE TASK]` -> `idle-task-gate.md`
 
 ## Routing
@@ -33,6 +36,16 @@ arrow names the page to read under `references/` in this skill directory.
     once, then kills wait shapes -> `idle-task-gate.md`
 -   Same tool call 3 times (task status polls too), or 2-3 calls alternating:
     `hooks/pawl_oscillation_hook.py` prompts -> `oscillation-breaker.md`
+-   Edit whose replacement equals its target: `hooks/pawl_noop_edit_hook.py`
+    denies -> `noop-edit-guard.md`
+-   Invisible characters in a write: `hooks/pawl_zero_width_hook.py` strips
+    them, never blocks -> `zero-width-sanitizer.md`
+-   Read-only shell command: `hooks/pawl_readonly_hook.py` auto-approves; hand:
+    `readonly_pass.py check` -> `readonly-pass.md`
+-   Re-reading own transcript, a `SKILL.md` or a memory file:
+    `hooks/pawl_reread_hook.py` denies past the limit -> `reread-guard.md`
+-   Reading another conversation's `brain/` or transcript:
+    `hooks/pawl_fence_hook.py` prompts -> `conversation-fence.md`
 -   Which gates fired this week: `report.py --days 7` -> `report.md`
 -   Text a human will read: `prose_gate.py --plane chat|deliverable` ->
     `prose-gate.md`
@@ -56,11 +69,15 @@ arrow names the page to read under `references/` in this skill directory.
 -   Hook decision JSON on stdout only: `{"decision":"allow"}`,
     `{"decision":"deny","reason":"..."}` or
     `{"decision":"force_ask","reason":"..."}`; the Stop hook uses `"block"`.
--   Egress firewall fails closed. Prose gate, send budget, idle task gate and
-    oscillation breaker fail open.
+-   Egress firewall fails closed. Prose gate, send budget, idle task gate,
+    oscillation breaker, no-op edit guard, zero-width sanitizer, read-only
+    pass, reread guard and conversation fence fail open.
 -   Disable a send gate for one session: `PAWL_DISABLE=egress,prose,budget` (any
     subset).
--   Git guard, poll guard and oscillation breaker return force_ask at a hit;
+-   Read-only pass answers `auto_approve` or `allow`, never deny; the
+    zero-width sanitizer answers `allow` with an `overwrite` block.
+-   Git guard, poll guard, oscillation breaker and conversation fence return
+    force_ask at a hit;
     only a human click passes. `SEND_BUDGET_OVERRIDE=1` stays for hand runs of
     the send-budget CLI.
 -   Never edit a piece to make a gate pass. Fix the draft, command, count, or
@@ -73,4 +90,4 @@ python3 -B ${PLUGIN_ROOT}/run_tests.py
 python3 -B ${PLUGIN_ROOT}/check_portable.py
 ```
 
-Expected: 14 lines starting `OK`, then `portable: clean`, exit 0.
+Expected: 19 lines starting `OK`, then `portable: clean`, exit 0.

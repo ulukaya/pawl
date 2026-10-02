@@ -59,7 +59,9 @@ class EgressPayloadTest(unittest.TestCase):
       self.assertIn("failing closed", out["reason"])
     src = Path(self.tmp) / "msg.txt"
     src.write_text("all clean here\n")
-    out = self.run_hook(f"gchat send --space spaces/A --text \"$(cat '{src}')\"")
+    out = self.run_hook(
+        f"gchat send --space spaces/A --text \"$(cat '{src}')\""
+    )
     self.assertEqual(out["decision"], "allow", out)
 
   def test_egress_treats_shell_syntax_inside_a_file_as_text(self) -> None:

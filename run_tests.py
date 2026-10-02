@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runs every pawl test: 12 piece suites, hooks, root gate, grader twins.
+"""Runs every pawl test: 17 piece suites, hooks, root gate, grader twins.
 
 Exit 1 on any failure.
 
