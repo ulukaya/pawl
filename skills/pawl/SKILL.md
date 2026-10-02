@@ -31,7 +31,7 @@ arrow names the page to read under `references/` in this skill directory.
     prompts; hand: `poll_loop_guard.py classify` -> `poll-loop-guard.md`
 -   Turn end with tasks older than 10 min: `hooks/pawl_stop_hook.py` blocks
     once, then kills wait shapes -> `idle-task-gate.md`
--   Same tool call 3 times, or 2-3 calls alternating:
+-   Same tool call 3 times (task status polls too), or 2-3 calls alternating:
     `hooks/pawl_oscillation_hook.py` prompts -> `oscillation-breaker.md`
 -   Which gates fired this week: `report.py --days 7` -> `report.md`
 -   Text a human will read: `prose_gate.py --plane chat|deliverable` ->

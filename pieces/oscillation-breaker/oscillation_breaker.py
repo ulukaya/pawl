@@ -11,10 +11,19 @@ before the next call when the ring shows a repeat:
     2-gram: the last two calls equal the two before them
     3-gram: the last three calls equal the three before them
 
-Arguments are hashed (sha1 of canonical JSON), never stored. State lives at
-PAWL_DATA/oscillation/<conversation>.json, written with a temp file and
-os.replace. Missing conversation id, unparsable stdin, or any internal error
-fails open: the call runs and nothing is written.
+Arguments are hashed (sha1 of canonical JSON), never stored. Intent fields
+and a growing view_file EndLine are dropped first, and manage_task counts only
+as a status check on one task (call_shape.py). For a task status or a .log
+read the reason adds that background tasks report when they finish. State
+lives at PAWL_DATA/oscillation/<conversation>.json, written with a temp file
+and os.replace. Missing conversation id, unparsable stdin, or any internal
+error fails open: the call runs and nothing is written.
+
+The ring is cleared when a turn ends (the `stop` hook entry) and on a
+`schedule` call, so cron and timer wakeups, each its own turn, never add up
+to a loop. A slow retry loop inside one turn still does. PAWL_OSCILLATION_IDLE_S
+also expires a ring idle that long, measured from the last call's start; it is
+off by default because a slow retry would expire its own ring.
 
 CLI:
     oscillation_breaker.py check <conversation> <tool> [json-args]
@@ -23,10 +32,14 @@ CLI:
         print the ring as `tool sha1` lines
     oscillation_breaker.py reset <conversation>
         delete the ring
+    oscillation_breaker_hook.py stop
+        Stop hook: delete the ring of the payload's conversation, allow
 
 Environment:
     PAWL_DATA                       state dir (default ~/.pawl)
     PAWL_OSCILLATION_WINDOW         ring size (default 16, min 6)
+    PAWL_OSCILLATION_IDLE_S         expire a ring idle this long (default 0,
+                                    off)
     PAWL_OSCILLATION_WATCHDOG_S     watchdog seconds (default host timeout 15 -
                                     1)
 
@@ -45,23 +58,24 @@ import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+import call_shape
+
 HOOK_NAME = "oscillation_breaker"
 GATE = "OSCILLATION"
 WINDOW_ENV = "PAWL_OSCILLATION_WINDOW"
 WATCHDOG_ENV = "PAWL_OSCILLATION_WATCHDOG_S"
+IDLE_ENV = "PAWL_OSCILLATION_IDLE_S"
 CONV_ENV = "ANTIGRAVITY_CONVERSATION_ID"
 HOST_TIMEOUT_S = 15.0
 DEFAULT_WINDOW = 16
 MIN_WINDOW = 6
 TRIPLE = 3
 
-# Calls that are legitimately repeated: waiting, messaging, asking.
-EXEMPT_TOOLS = frozenset({
-    "manage_task",
-    "schedule",
-    "send_message",
-    "ask_question",
-})
+EXEMPT_TOOLS = call_shape.EXEMPT_TOOLS
+POLL_HINT = (
+    " Background tasks report when they finish; end the turn and wait for"
+    " that instead of polling."
+)
 
 _SAFE_CONV_RE = re.compile(r"[^A-Za-z0-9._-]+")
 
@@ -81,6 +95,22 @@ def window() -> int:
     return DEFAULT_WINDOW
 
 
+def idle_s() -> float:
+  """Idle expiry from PAWL_OSCILLATION_IDLE_S; 0 (off) when unset or bad."""
+  try:
+    return max(0.0, float(os.environ.get(IDLE_ENV) or 0))
+  except ValueError:
+    return 0.0
+
+
+def _expired(raw: Dict[str, Any]) -> bool:
+  limit = idle_s()
+  updated = raw.get("updated")
+  if limit <= 0 or not isinstance(updated, (int, float)):
+    return False
+  return time.time() - updated >= limit
+
+
 def ring_path(conv: str) -> Path:
   safe = _SAFE_CONV_RE.sub("_", conv)[:120] or "unknown"
   return data_dir() / "oscillation" / f"{safe}.json"
@@ -98,7 +128,9 @@ def load_ring(conv: str) -> List[Tuple[str, str]]:
     raw = json.loads(ring_path(conv).read_text(encoding="utf-8"))
   except (OSError, ValueError):
     return []
-  items = raw.get("calls") if isinstance(raw, dict) else None
+  if not isinstance(raw, dict) or _expired(raw):
+    return []
+  items = raw.get("calls")
   out: List[Tuple[str, str]] = []
   for item in items or []:
     if (
@@ -157,10 +189,11 @@ def detect(ring: List[Tuple[str, str]]) -> Optional[Tuple[str, int, int]]:
   return None
 
 
-def reason_for(tool: str, repeats: int, span: int) -> str:
+def reason_for(tool: str, repeats: int, span: int, poll: bool = False) -> str:
+  hint = POLL_HINT if poll else ""
   return (
       f"[PAWL loop] {tool} repeated with identical args {repeats} times in a"
-      f" row (last {span} calls). Approve to continue."
+      f" row (last {span} calls).{hint} Approve to continue."
   )
 
 
@@ -173,18 +206,22 @@ def observe(conv: str, tool: str, args: Any) -> Optional[str]:
     args: tool arguments, hashed before storage.
 
   Returns:
-    The reason text on a repeat, else None. The call is appended either way.
+    The reason text on a repeat, else None. A non-exempt call is appended
+    either way; a schedule call clears the ring.
   """
-  if tool in EXEMPT_TOOLS:
+  if tool == call_shape.SCHEDULE_TOOL:
+    reset_ring(conv)
+    return None
+  if call_shape.is_exempt(tool, args):
     return None
   ring = load_ring(conv)
-  ring.append((tool, args_digest(args)))
+  ring.append((tool, args_digest(call_shape.normalize(tool, args))))
   ring = ring[-window() :]
   save_ring(conv, ring)
   hit = detect(ring)
   if hit is None:
     return None
-  return reason_for(*hit)
+  return reason_for(*hit, poll=call_shape.is_poll(tool, args))
 
 
 # --- payload ------------------------------------------------------------------
@@ -290,6 +327,18 @@ def run_hook(raw: str) -> Dict[str, str]:
     return {"decision": "allow"}
 
 
+def end_turn(raw: str) -> Dict[str, str]:
+  """Stop hook decision: the turn is over, so clear its ring. Always allow."""
+  try:
+    conv = resolve_conversation_id(read_payload(raw))
+    if conv:
+      reset_ring(conv)
+  except Exception as exc:  # pylint: disable=broad-exception-caught
+    # fail open: a Stop hook never blocks on its own bug
+    sys.stderr.write(f"[{HOOK_NAME}] stop error, failing open: {exc!r}\n")
+  return {"decision": "allow"}
+
+
 def watchdog_budget_s() -> float:
   try:
     return max(
@@ -324,10 +373,12 @@ def disarm_watchdog() -> None:
     return
 
 
-def hook_main() -> None:
+def hook_main(stop: bool = False) -> None:
+  """PreToolUse entry, or the Stop entry when `stop` is set."""
+  handler = end_turn if stop else run_hook
   arm_watchdog(watchdog_budget_s())
   try:
-    result = run_hook(sys.stdin.read())
+    result = handler(sys.stdin.read())
   finally:
     disarm_watchdog()
   sys.stdout.write(json.dumps(result))

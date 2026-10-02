@@ -87,7 +87,8 @@ plugin name is `pawl`.
 ## What the hooks do
 
 Five hook groups in `hooks.json`: three `PreToolUse` hooks on `run_command`, one
-`PreToolUse` hook on every tool, and one `Stop` hook. Each is its own group, so
+`PreToolUse` hook on every tool with a `Stop` entry that clears its ring, and
+one `Stop` hook for idle tasks. Each is its own group, so
 you can disable one without the others.
 
 ### `pawl-send-gates`: `hooks/pawl_hook.py`
@@ -125,8 +126,11 @@ is a deny. Reason prefix `[PAWL poll]`.
 
 On every tool call, records `(tool, sha1 of args)` in a 16-slot ring per
 conversation and prompts (`force_ask`) when the same call repeats three times in
-a row or the last two or three calls repeat the ones before them. Fails open.
-Reason prefix `[PAWL loop]`.
+a row or the last two or three calls repeat the ones before them. Intent fields
+and a growing log read's `EndLine` are dropped before hashing, so three
+`manage_task` status checks on one task prompt too. The ring clears on
+`schedule` and at turn end, so cron wakeups never add up. Fails open. Reason
+prefix `[PAWL loop]`.
 
 ### `pawl-idle-task-gate`: `hooks/pawl_stop_hook.py`
 

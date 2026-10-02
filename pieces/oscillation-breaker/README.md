@@ -1,7 +1,7 @@
 # Oscillation breaker
 
 One piece of the CoS blueprint, published on its own so you can run it in ten
-minutes. Four files, standard library only, no dependency on the rest of the
+minutes. Six files, standard library only, no dependency on the rest of the
 system.
 
 ## What it does
@@ -13,6 +13,18 @@ the ring shows a repeat:
 -   the same `(tool, args)` three times in a row;
 -   a 2-gram cycle: the last two calls equal the two before them;
 -   a 3-gram cycle: the last three calls equal the three before them.
+
+Before hashing, the args drop the intent fields the host adds
+(`toolSummary`, `toolAction`), which the model rewords on every call, and a
+`view_file` that has a `StartLine` drops its `EndLine`. Reading a growing log
+again from the same line is a repeat; paging forward moves `StartLine` and
+stays new. Three `manage_task` status checks on one task in a row prompt, and
+for a task status or a `.log` read the reason adds that background tasks
+report when they finish, so the turn can end and wait.
+
+The ring is cleared on a `schedule` call and when a turn ends (the Stop entry).
+A cron or timer wakeup is its own turn, so one poll per wakeup never adds up
+to a loop, while a slow retry loop inside one turn still trips.
 
 The decision is `force_ask`, not deny: the host shows the reason and one click
 lets the call run. Every prompt lands as one row in `PAWL_DATA/denials.jsonl`
@@ -33,21 +45,29 @@ memory of what was just called turns a silent burn into one prompt.
 | ----------------------------- | -------------------------------------------- |
 | `oscillation_breaker.py`      | Ring, detector, hook decision and CLI. Ring  |
 :                               : saved with a temp file and `os.replace`.     :
+| `call_shape.py`               | What is hashed (intent fields and a log      |
+:                               : read's `EndLine` dropped), which calls are   :
+:                               : exempt, which count as polls.                :
 | `oscillation_breaker_hook.py` | PreToolUse hook. Reads the tool call JSON on |
 :                               : stdin, prints `{"decision"\: "allow"}` or    :
 :                               : `{"decision"\: "force_ask", "reason"\:       :
 :                               : "[PAWL loop] ..."}`. Fails open on           :
-:                               : everything.                                  :
+:                               : everything. With the `stop` argument it is   :
+:                               : the Stop hook: clears the ring, allows.      :
 | `test_oscillation_breaker.py` | 19 tests: ring persistence, window cap,      |
 :                               : triple repeat, 2-gram and 3-gram cycles,     :
 :                               : no-fire cases, exempt tools, hook fail-open  :
 :                               : paths, CLI exit codes.                       :
+| `test_polls_and_resets.py`    | 14 tests: intent fields, `EndLine`,          |
+:                               : `manage_task` status, the poll hint,         :
+:                               : `schedule` and turn-end resets, cron ticks,  :
+:                               : slow calls in one turn, opt-in idle expiry.  :
 | `README.md`                   | This file.                                   |
 
 ## Run it
 
 ```bash
-python3 -m pytest -q test_oscillation_breaker.py
+python3 -m pytest -q .
 python3 oscillation_breaker.py check my-conv view_file '{"path": "a.py"}'
 python3 oscillation_breaker.py show my-conv
 python3 oscillation_breaker.py reset my-conv
@@ -59,7 +79,7 @@ on stdout.
 ## Wire it as a hook
 
 Jetski and Antigravity read `hooks.json`. Match every tool, not only
-`run_command`:
+`run_command`, and add the Stop entry that clears the ring at turn end:
 
 ```json
 {
@@ -72,6 +92,9 @@ Jetski and Antigravity read `hooks.json`. Match every tool, not only
           {"type": "command", "command": "python3 /path/to/oscillation_breaker_hook.py", "timeout": 15}
         ]
       }
+    ],
+    "Stop": [
+      {"type": "command", "command": "python3 /path/to/oscillation_breaker_hook.py stop", "timeout": 15}
     ]
   }
 }
@@ -90,6 +113,9 @@ shape.
 | `PAWL_OSCILLATION_WINDOW`     | Ring size (min 6)       | 16        |
 | `PAWL_OSCILLATION_WATCHDOG_S` | Seconds before the hook | 14        |
 :                               : fails open on time      :           :
+| `PAWL_OSCILLATION_IDLE_S`     | Expire a ring idle this | 0 (off)   |
+:                               : long, measured from the :           :
+:                               : last call's start       :           :
 
 ## Design notes
 
@@ -97,8 +123,12 @@ shape.
     edit); the human is the one who knows.
 -   Hash the arguments. The ring never stores a file path, a command line, or a
     message body.
--   Exempt the tools that repeat by design: `manage_task`, `schedule`,
-    `send_message`, `ask_question`.
+-   Exempt the tools that repeat by design: `manage_task` (except a status
+    check on one task), `schedule`, `send_message`, `ask_question`.
+-   Reset on turn end, not on a clock. A PreToolUse hook only sees when a call
+    starts, so an idle timer would also expire the ring between slow retries
+    in one turn, the loop this piece most needs to catch. That is why
+    `PAWL_OSCILLATION_IDLE_S` is opt-in.
 -   Fail open everywhere. No conversation id, bad stdin, an unwritable state
     dir, a watchdog timeout: the call runs and nothing is written.
 

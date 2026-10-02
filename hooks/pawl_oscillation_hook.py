@@ -18,4 +18,4 @@ sys.path.insert(0, str(PIECES / "oscillation-breaker"))
 import oscillation_breaker  # noqa: E402  # pylint: disable=g-import-not-at-top
 
 if __name__ == "__main__":
-  oscillation_breaker.hook_main()
+  oscillation_breaker.hook_main(stop=sys.argv[1:] == ["stop"])

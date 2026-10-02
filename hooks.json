@@ -57,6 +57,13 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python3 -B hooks/pawl_oscillation_hook.py stop",
+        "timeout": 15
+      }
     ]
   },
   "pawl-idle-task-gate": {
