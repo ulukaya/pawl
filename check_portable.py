@@ -265,6 +265,7 @@ def main() -> int:
       check_skill_env,
       check_contract.check_hook_configs,
       check_contract.check_manifests,
+      check_contract.check_plugin_settings,
       check_contract.check_file_length,
       check_contract.check_nesting,
   ):

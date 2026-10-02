@@ -16,5 +16,36 @@
     "hooks",
     "git",
     "deterministic"
-  ]
+  ],
+  "icon": "./assets/logo.svg",
+  "documentationUrl": "https://github.com/ulukaya/pawl#readme",
+  "supportUrl": "https://github.com/ulukaya/pawl/issues",
+  "privacyPolicyUrl": "https://github.com/ulukaya/pawl/blob/main/PRIVACY.md",
+  "termsOfServiceUrl": "https://github.com/ulukaya/pawl/blob/main/LICENSE",
+  "userConfig": {
+    "readonly_auto_approve": {
+      "type": "boolean",
+      "title": "Approve read-only shell commands",
+      "description": "Skip the permission prompt for shell commands pawl can prove only read (ls, cat, git log, rg, ...). Off: you are asked as usual.",
+      "default": true
+    },
+    "protected_roots": {
+      "type": "string",
+      "title": "Repos the git guard protects",
+      "description": "Colon-separated repo paths where pawl asks before git commands that discard work. Empty: the repo each command runs in.",
+      "default": ""
+    },
+    "strict_fence": {
+      "type": "boolean",
+      "title": "Refuse reads of other sessions",
+      "description": "Deny, instead of asking, when a tool call reads another conversation's transcript or files.",
+      "default": false
+    },
+    "disable": {
+      "type": "string",
+      "title": "Gates to turn off",
+      "description": "Comma-separated gate names: git, poll, loop, noop, zero-width, fence, reread, readonly, send, idle (or egress, prose, budget).",
+      "default": ""
+    }
+  }
 }

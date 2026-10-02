@@ -39,7 +39,8 @@ class TreeCase(unittest.TestCase):
     super().setUp()
     self.root = Path(tempfile.mkdtemp(prefix="pawl_contract_"))
     self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
-    for rel in CONFIG_FILES + MANIFESTS + ("assets/logo.svg",):
+    for rel in CONFIG_FILES + MANIFESTS + ("assets/logo.svg",
+                                           "hooks/pawl.py"):
       dest = self.root / rel
       dest.parent.mkdir(parents=True, exist_ok=True)
       shutil.copy(ROOT / rel, dest)
@@ -156,6 +157,37 @@ class ManifestTest(TreeCase):
                   " ".join(self.errors(cc.check_manifests)))
 
 
+  def test_claude_icon_must_exist(self) -> None:
+    claude = self.read(".claude-plugin/plugin.json")
+    claude["icon"] = "./assets/missing.svg"
+    self.write(".claude-plugin/plugin.json", claude)
+    self.assertIn("icon './assets/missing.svg' does not exist",
+                  " ".join(self.errors(cc.check_manifests)))
+
+
+class PluginSettingsTest(TreeCase):
+
+  def test_shipped_copy_is_clean(self) -> None:
+    self.assertEqual(self.errors(cc.check_plugin_settings), [])
+
+  def test_setting_the_dispatcher_never_reads_fails(self) -> None:
+    claude = self.read(".claude-plugin/plugin.json")
+    claude["userConfig"]["verbose"] = dict(
+        claude["userConfig"]["disable"], title="Verbose")
+    self.write(".claude-plugin/plugin.json", claude)
+    self.assertEqual(self.errors(cc.check_plugin_settings), [
+        ".claude-plugin/plugin.json: userConfig verbose is not in"
+        " hooks/pawl.py PLUGIN_OPTIONS, so it changes nothing"])
+
+  def test_option_with_no_setting_fails(self) -> None:
+    claude = self.read(".claude-plugin/plugin.json")
+    del claude["userConfig"]["disable"]
+    self.write(".claude-plugin/plugin.json", claude)
+    self.assertEqual(self.errors(cc.check_plugin_settings), [
+        "hooks/pawl.py: PLUGIN_OPTIONS reads DISABLE, which"
+        " .claude-plugin/plugin.json userConfig does not declare"])
+
+
 class GuardrailTest(TreeCase):
 
   def test_file_over_500_lines_fails_and_tooling_dirs_pass(self) -> None:
@@ -204,7 +236,8 @@ class LiveTreeTest(unittest.TestCase):
 
   def test_live_tree_is_clean(self) -> None:
     for check in (cc.check_hook_configs, cc.check_manifests,
-                  cc.check_file_length, cc.check_nesting):
+                  cc.check_plugin_settings, cc.check_file_length,
+                  cc.check_nesting):
       errors: List[str] = []
       check(errors)
       self.assertEqual(errors, [], check.__name__)

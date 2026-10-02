@@ -19,6 +19,12 @@
     "developerName": "Ulukaya",
     "category": "Coding",
     "websiteURL": "https://github.com/ulukaya/pawl",
+    "privacyPolicyURL": "https://github.com/ulukaya/pawl/blob/main/PRIVACY.md",
+    "termsOfServiceURL": "https://github.com/ulukaya/pawl/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Which pawl gates are active, and what does each one stop?",
+      "Explain why pawl asked before my last command."
+    ],
     "logo": "./assets/logo.svg"
   }
 }

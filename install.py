@@ -178,13 +178,24 @@ def run_cli(binary: str, args: List[str], uninstall: bool) -> str:
                         timeout=CLI_TIMEOUT_S, check=False)
   out = (proc.stdout + proc.stderr).strip()
   if proc.returncode == 0 or (uninstall and "not found" in out.lower()):
-    return out.splitlines()[-1] if out else "ok"
+    return out or "ok"
   raise InstallError(f"`{' '.join([binary] + args)}` failed: {out}", 1)
+
+
+def marketplace_source(source: str) -> str:
+  """An existing local directory as an absolute path, anything else as is.
+
+  The plugin CLIs take owner/repo, a URL, or ./path; a bare `.` or `pawl`
+  that names a checkout is refused or read as a GitHub repo.
+  """
+  path = Path(source).expanduser()
+  return str(path.resolve()) if path.is_dir() else source
 
 
 def plugin_cli(harness: str, source: str, uninstall: bool,
                dry: bool) -> List[str]:
   binary = cli_bin(harness)
+  source = marketplace_source(source)
   steps = CLI[harness]["uninstall" if uninstall else "install"]
   argvs = [[a.format(source=source) for a in step] for step in steps]
   if not binary:

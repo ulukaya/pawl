@@ -14,7 +14,9 @@ Run by check_portable.py (checks 9 to 12):
      --only gate exists and runs on that event, every gate has an
      Antigravity group, and Claude Code and Codex run every gate.
  10. The Claude Code and Codex manifests and the marketplace name one plugin
-     at one version, and every path they give exists.
+     at one version, and every path they give exists. Each Claude Code
+     plugin setting (userConfig) is one hooks/pawl.py PLUGIN_OPTIONS reads,
+     and the other way round.
  11. No source file over 500 lines (CLAUDE.md guardrail 1).
  12. No function nests blocks more than 3 deep; an elif chain is one level
      (CLAUDE.md guardrail 2).
@@ -203,6 +205,47 @@ def check_manifests(errors: List[str], root: Path = ROOT) -> None:
   logo = (codex.get("interface") or {}).get("logo")
   if logo is not None:
     errors.extend(_path_errors(root, rel, "interface.logo", logo))
+  if claude.get("icon") is not None:
+    errors.extend(_path_errors(root, ".claude-plugin/plugin.json", "icon",
+                               claude["icon"]))
+
+
+def plugin_option_keys(root: Path = ROOT) -> Set[str]:
+  """The CLAUDE_PLUGIN_OPTION_<KEY> names hooks/pawl.py maps, read by AST.
+
+  Importing the dispatcher would apply the options to this process, so
+  the keys come from the first string of each PLUGIN_OPTIONS tuple.
+  """
+  module = ast.parse((root / "hooks/pawl.py").read_text())
+  for node in module.body:
+    targets = getattr(node, "targets", [])
+    if not any(getattr(t, "id", "") == "PLUGIN_OPTIONS" for t in targets):
+      continue
+    rows = getattr(node.value, "elts", [])
+    return {row.elts[0].value for row in rows
+            if isinstance(row, ast.Tuple) and row.elts
+            and isinstance(row.elts[0], ast.Constant)}
+  return set()
+
+
+def check_plugin_settings(errors: List[str], root: Path = ROOT) -> None:
+  rel = ".claude-plugin/plugin.json"
+  claude = _load(root, rel, errors)
+  if claude is None:
+    return
+  declared = {str(k) for k in claude.get("userConfig") or {}}
+  try:
+    mapped = plugin_option_keys(root)
+  except (OSError, SyntaxError) as exc:
+    errors.append(f"hooks/pawl.py: unreadable ({exc})")
+    return
+  for key in sorted(declared, key=str.upper):
+    if key.upper() not in mapped:
+      errors.append(f"{rel}: userConfig {key} is not in hooks/pawl.py"
+                    " PLUGIN_OPTIONS, so it changes nothing")
+  for key in sorted(mapped - {k.upper() for k in declared}):
+    errors.append(f"hooks/pawl.py: PLUGIN_OPTIONS reads {key}, which {rel}"
+                  " userConfig does not declare")
 
 
 # --- checks 11 and 12: CLAUDE.md guardrails -------------------------------------

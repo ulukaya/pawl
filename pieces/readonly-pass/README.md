@@ -57,6 +57,12 @@ translates each harness's payload and answer, so the piece only ever sees
 the Antigravity shape below. `PAWL_DISABLE=readonly` turns it off for a
 session. The rest of this page is for running the piece on its own.
 
+On Claude Code an approval is `permissionDecision: allow`, which skips the
+prompt. On Codex the gate stays silent: a PreToolUse hook there cannot
+approve, and pawl does not answer Codex's PermissionRequest hook either:
+that payload leaves out whether the command asked to leave the sandbox, and
+pawl will not approve an escalation it cannot see.
+
 ## Configuration
 
 | Variable | Meaning | Default |

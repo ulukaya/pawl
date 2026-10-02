@@ -163,10 +163,28 @@ and `pieces/<piece>/README.md`.
 | Change send ceilings | `SEND_BUDGET_CEILINGS='{"chat_space": 4}'` |
 | Change egress rules | edit `$PAWL_DATA/egress_rules.json` (default `~/.pawl/`) |
 | Protect specific repos | `PAWL_GIT_PROTECTED_ROOTS=/repo/a:/repo/b` (default: the call's git toplevel) |
+| Keep the prompt for read-only commands | `PAWL_READONLY_PASS_OFF=1` |
+| Refuse, not ask, on another session's files | `PAWL_CONVERSATION_FENCE_STRICT=1` |
 | Force a harness format | `--harness` in the config, or `PAWL_HARNESS` |
+
+On Claude Code four of these are plugin settings, so nobody edits an
+environment: `/config` lists pawl's rows (Approve read-only shell commands,
+Repos the git guard protects, Refuse reads of other sessions, Gates to turn
+off), and `claude plugin install pawl@pawl --config disable=reread` sets one
+at install. A `PAWL_*` variable you export wins over the setting.
 
 State and logs live under `PAWL_DATA` (default `~/.pawl`). Each piece's knobs
 are listed in its reference page.
+
+## Privacy
+
+pawl runs on your machine and nowhere else: no network, no telemetry, no
+model calls. Its logs hold counters and SHA-1 digests, never a command,
+path or message. One gate loosens anything: on Claude Code and Antigravity,
+`readonly` approves shell commands it can prove only read, without a prompt
+(Codex hooks cannot approve, so there it stays silent); turn it off in
+`/config` or with `PAWL_READONLY_PASS_OFF=1`. [PRIVACY.md](PRIVACY.md) lists
+every file pawl reads and writes.
 
 ## Pieces
 

@@ -28,6 +28,8 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
     `~/.agent-skills/pawl`, neither of which any harness loads.
 *   `check_portable.py` scanned `.venv/`, so the gate failed in the
     virtualenv CLAUDE.md asks for.
+*   `install.sh --source .` handed `.` to the plugin CLIs, which refuse it;
+    a local directory is now passed as an absolute path.
 
 ### Added
 
@@ -58,6 +60,14 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
     file limit and a nesting depth of 3.
 *   End-to-end tests that run the shipped Claude Code and Codex configs from
     an unrelated project directory.
+*   Claude Code plugin settings in `/config`: approve read-only commands,
+    protected repos, strict fence, gates to turn off. `check_contract.py`
+    fails when a setting and the dispatcher's option map disagree.
+*   Directory listing fields: icon and documentation, support, privacy and
+    terms links; Codex gets the same links and two starter prompts.
+*   `PRIVACY.md`: every file pawl reads and writes, and the one place it
+    loosens a harness default.
+*   `.githooks/pre-push` runs `check_portable.py` and the battery.
 *   CI: Python 3.14 and a ruff (pyflakes, bugbear) job.
 
 ### Changed
@@ -70,11 +80,17 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
     48 ms): modules compile once into `PAWL_DATA/pycache`, and the hot path
     no longer imports `dataclasses` or `argparse`.
 *   README tables render on GitHub.
+*   Licensed under Apache-2.0.
+*   GitHub CI runs by hand only (`workflow_dispatch`) until hosted runners
+    are available on the account; the pre-push hook enforces the same
+    checks.
 
 ### Removed
 
 *   `harnesses/codex/`: its config pointed at deleted scripts and its prompt
     text promised approvals Codex hooks cannot give.
+*   An internal review archive and a reconstruction spec that did not
+    belong in a public repo, from the tree and from git history.
 
 ## 0.3.0
 

@@ -146,6 +146,14 @@ class InstallTest(unittest.TestCase):
     self.run_main("--claude", "--no-verify")
     self.assertEqual(self.calls("claude")[0], f"plugin marketplace add {ROOT}")
 
+  def test_relative_source_dir_is_passed_absolute(self) -> None:
+    # `claude plugin marketplace add .` is refused as an unknown format.
+    self.fake_cli("claude")
+    with contextlib.chdir(ROOT):
+      code, _, err = self.run_main("--claude", "--no-verify", "--source", ".")
+    self.assertEqual(code, 0, err)
+    self.assertEqual(self.calls("claude")[0], f"plugin marketplace add {ROOT}")
+
   def test_uninstall_tolerates_already_removed(self) -> None:
     self.fake_cli("codex")
     (self.tmp / "codex.log.gone").touch()
