@@ -90,7 +90,8 @@ class HarnessCase(unittest.TestCase):
 
   def stop(self, **extra: Any) -> Optional[Dict[str, Any]]:
     raw = dict(self.payload("", {}), hook_event_name="Stop",
-               stop_hook_active=False, **extra)
+               stop_hook_active=False)
+    raw.update(extra)
     for key in ("tool_name", "tool_input", "tool_use_id"):
       raw.pop(key, None)
     out = self.run_hook("Stop", json.dumps(raw)).stdout
@@ -194,6 +195,18 @@ class ClaudeCodeTest(HarnessCase):
 
   def test_quiet_stop_is_silent(self) -> None:
     self.assertIsNone(self.stop())
+
+  def test_stop_blocks_once_on_a_background_wait(self) -> None:
+    tasks = [{"id": "b7", "type": "shell", "status": "running",
+              "description": "follow log", "command": "tail -f app.log"},
+             {"id": "b8", "type": "shell", "status": "running",
+              "description": "build", "command": "npm run build"}]
+    out = self.stop(background_tasks=tasks)
+    self.assertEqual(out["decision"], "block")
+    self.assertIn("task b7: tail -f app.log", out["reason"])
+    self.assertIn("TaskStop", out["reason"])
+    self.assertNotIn("manage_task", out["reason"])
+    self.assertIsNone(self.stop(background_tasks=tasks, stop_hook_active=True))
 
 
 class CodexTest(HarnessCase):

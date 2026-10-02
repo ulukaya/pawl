@@ -373,3 +373,58 @@ def test_cli_list_and_classify(proc: FakeProc) -> None:
       ).returncode
       == 2
   )
+
+
+# --- harness-reported background tasks (Claude Code Stop payload) -------------
+
+
+def _reported(*tasks: Dict[str, Any]) -> Dict[str, Any]:
+  return {"conversationId": CONV, "backgroundTasks": list(tasks)}
+
+
+def _shell(task_id: str, cmd: str, **extra: Any) -> Dict[str, Any]:
+  return dict(id=task_id, type="shell", status="running", command=cmd,
+              description="d", **extra)
+
+
+def test_reported_wait_shape_blocks_once_then_allows(proc: FakeProc) -> None:
+  payload = _reported(_shell("b1", "tail -f /var/log/app.log"),
+                      _shell("b2", "npm run build"))
+  out = itg.decide(payload)
+  assert out["decision"] == "block"
+  assert out["reason"].startswith("[IDLE TASK] 1 background task(s)")
+  assert "b1" in out["reason"] and "tail -f" in out["reason"]
+  assert "b2" not in out["reason"]
+  assert itg.decide(payload) == itg.ALLOW
+
+
+def test_reported_tasks_without_wait_shapes_allow(proc: FakeProc) -> None:
+  payload = _reported(_shell("b1", "pytest -q"),
+                      {"id": "a1", "type": "subagent", "status": "running"},
+                      {"id": "m1", "type": "monitor", "command": "tail -f x"})
+  assert itg.decide(payload) == itg.ALLOW
+  assert itg.decide(_reported()) == itg.ALLOW
+
+
+def test_reported_list_replaces_the_procfs_scan(proc: FakeProc) -> None:
+  proc.add(4242, age_s=3600, cmd="sleep 9999")
+  assert itg.decide(_reported()) == itg.ALLOW
+  assert itg.decide({"conversationId": CONV})["decision"] == "block"
+
+
+def test_reported_allow_regex_and_new_set(
+    proc: FakeProc, monkeypatch: pytest.MonkeyPatch
+) -> None:
+  monkeypatch.setenv("PAWL_IDLE_TASK_ALLOW_RE", r"dev\.log")
+  assert itg.decide(_reported(_shell("b1", "tail -f dev.log"))) == itg.ALLOW
+  first = _reported(_shell("b2", "while true; do sleep 5; done"))
+  assert itg.decide(first)["decision"] == "block"
+  second = _reported(_shell("b2", "while true; do sleep 5; done"),
+                     _shell("b3", "sleep 9000"))
+  assert itg.decide(second)["decision"] == "block"
+
+
+def test_reported_malformed_entries_are_ignored(proc: FakeProc) -> None:
+  payload = {"conversationId": CONV,
+             "backgroundTasks": ["x", None, {"type": "shell"}, 3]}
+  assert itg.decide(payload) == itg.ALLOW

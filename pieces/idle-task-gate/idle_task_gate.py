@@ -60,10 +60,12 @@ import sys
 import time
 from typing import Any, Dict, List, Optional
 
+import procfs_tasks
+
 HOOK_NAME = "idle_task_gate"
 GATE = "IDLE_TASK"
 ALLOW: Dict[str, Any] = {"decision": "allow"}
-CONV_ENV = "ANTIGRAVITY_CONVERSATION_ID"
+CONV_ENV = procfs_tasks.CONV_ENV
 MINUTES_ENV = "PAWL_IDLE_TASK_MINUTES"
 ALLOW_RE_ENV = "PAWL_IDLE_TASK_ALLOW_RE"
 PROC_ROOT_ENV = "PAWL_IDLE_TASK_PROC_ROOT"
@@ -166,100 +168,49 @@ def resolve_conversation_id(payload: Dict[str, Any]) -> str:
   return next((v.strip() for v in vals if isinstance(v, str) and v.strip()), "")
 
 
-# --- procfs readers -----------------------------------------------------------
+# --- task sources -------------------------------------------------------------
 
 
-def _read(path: Path) -> bytes:
-  try:
-    return path.read_bytes()
-  except OSError:
-    return b""
-
-
-def _conv_of(proc: Path, pid: str) -> str:
-  m = re.search(
-      rb"(?:^|\0)" + CONV_ENV.encode() + rb"=([^\0]*)",
-      _read(proc / pid / "environ"),
-  )
-  return m.group(1).decode("utf-8", "replace") if m else ""
-
-
-def _stat_fields(proc: Path, pid: str) -> List[str]:
-  """Fields after `(comm)` in /proc/<pid>/stat: 1 ppid, 2 pgid, 19 start."""
-  return (
-      _read(proc / pid / "stat")
-      .decode("utf-8", "replace")
-      .rsplit(")", 1)[-1]
-      .split()
-  )
-
-
-def _age_s(proc: Path, pid: str, uptime_s: float, hz: float) -> float:
-  fields = _stat_fields(proc, pid)
-  try:
-    return uptime_s - int(fields[19]) / hz
-  except (IndexError, ValueError):
-    return 0.0
-
-
-def _ppid(proc: Path, pid: str) -> str:
-  fields = _stat_fields(proc, pid)
-  return fields[1] if len(fields) > 1 else ""
-
-
-def _pgid(proc: Path, pid: str) -> int:
-  fields = _stat_fields(proc, pid)
-  try:
-    return int(fields[2])
-  except (IndexError, ValueError):
-    return 0
-
-
-def _uptime_s(proc: Path) -> float:
-  try:
-    return float(_read(proc / "uptime").split()[0])
-  except (IndexError, ValueError):
-    return 0.0
-
-
-def _clock_ticks() -> float:
-  try:
-    return float(os.sysconf("SC_CLK_TCK"))
-  except (ValueError, OSError, AttributeError):
-    return 100.0
+def _allow_re() -> Optional["re.Pattern[str]"]:
+  raw = os.environ.get(ALLOW_RE_ENV)
+  return re.compile(raw) if raw else None
 
 
 def idle_task_roots(conv: str) -> List[Dict[str, Any]]:
   """Task roots owned by `conv` past the age limit: [{pid, pgid, age, cmd}]."""
-  proc = _proc_root()
-  if not proc.is_dir():
-    return []
-  uptime, hz = _uptime_s(proc), _clock_ticks()
-  limit = max_age_s()
-  allow_re = (
-      re.compile(os.environ[ALLOW_RE_ENV])
-      if os.environ.get(ALLOW_RE_ENV)
-      else None
+  return procfs_tasks.task_roots(
+      conv, _proc_root(), max_age_s(), _allow_re(), _SELF_MARK
   )
-  out: List[Dict[str, Any]] = []
-  for pid in (p.name for p in proc.iterdir() if p.name.isdigit()):
-    if pid == str(os.getpid()) or _conv_of(proc, pid) != conv:
+
+
+def reported_waits(payload: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
+  """Wait-shape shell tasks the harness listed on Stop, or None if it lists none.
+
+  Claude Code's Stop payload names every in-flight background task (the
+  adapter passes it on as backgroundTasks). Such a task wakes the session
+  when it finishes, so only a shell task whose command is an unbounded wait
+  (classify() says LOOP, TAIL or SLEEP) is idle: it never finishes. The
+  harness gives no age, so the age limit does not apply.
+
+  Args:
+    payload: the Stop payload.
+
+  Returns:
+    [{id, cmd}] sorted by id; None when the payload carries no task list.
+  """
+  tasks = payload.get("backgroundTasks")
+  if not isinstance(tasks, list):
+    return None
+  allow = _allow_re()
+  rows = []
+  for task in tasks:
+    if not isinstance(task, dict) or task.get("type") != "shell":
       continue
-    cmd = (
-        _read(proc / pid / "cmdline")
-        .replace(b"\0", b" ")
-        .decode("utf-8", "replace")
-        .strip()
-    )
-    if _SELF_MARK in cmd or _conv_of(proc, _ppid(proc, pid)) == conv:
+    cmd = str(task.get("command") or "")
+    if classify(cmd) is None or (allow and allow.search(cmd)):
       continue
-    age = _age_s(proc, pid, uptime, hz)
-    if age <= limit or (allow_re and allow_re.search(cmd)):
-      continue
-    out.append(
-        {"pid": int(pid), "pgid": _pgid(proc, pid), "age": int(age), "cmd": cmd}
-    )
-  return sorted(out, key=lambda r: r["pid"])
+    rows.append({"id": str(task.get("id") or ""), "cmd": cmd})
+  return sorted(rows, key=lambda r: r["id"])
 
 
 # --- breaker: block once per pid set ------------------------------------------
@@ -372,11 +323,39 @@ def record_denial(
 # --- decision -----------------------------------------------------------------
 
 
+def _decide_reported(
+    conv: str, rows: List[Dict[str, Any]], payload: Dict[str, Any]
+) -> Dict[str, Any]:
+  """Block once per reported wait set; the gate cannot signal those tasks."""
+  if not rows:
+    return ALLOW
+  fingerprint = "tasks:" + ",".join(r["id"] for r in rows)
+  if not breaker_permits_block(conv, fingerprint):
+    _warn("second stop with the same wait set; leaving them running")
+    return ALLOW
+  record_denial(GATE, fingerprint, payload)
+  shown = "; ".join(
+      f"task {r['id']}: {' '.join(r['cmd'].split())[:90]}" for r in rows
+  )
+  return {
+      "decision": "block",
+      "reason": (
+          f"[IDLE TASK] {len(rows)} background task(s) from this conversation"
+          f" are unbounded waits that never finish, so they never report"
+          f" back: {shown}. Stop them with manage_task, or stop again to"
+          " leave them running."
+      ),
+  }
+
+
 def decide(payload: Dict[str, Any]) -> Dict[str, Any]:
   """Stop decision: block once per stale pid set, then terminate and allow."""
   conv = resolve_conversation_id(payload)
   if not conv:
     return ALLOW
+  reported = reported_waits(payload)
+  if reported is not None:
+    return _decide_reported(conv, reported, payload)
   rows = idle_task_roots(conv)
   if not rows:
     return ALLOW
