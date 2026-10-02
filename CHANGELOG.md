@@ -49,6 +49,9 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
     and clears a turn's counts at Stop.
 *   oscillation-breaker treats `.output` reads (Claude Code task output) as
     polls.
+*   The oscillation ring and reread counts are kept per subagent
+    (`agent_id`), so parallel subagents running one command are not a loop;
+    Claude Code's `prompt_id` keys the turn.
 *   `install.py`: per-harness install and uninstall through each harness's
     plugin CLI, idempotent, with `--dry-run` and `--source`.
 *   `check_contract.py`: checks every hook config, the manifests, a 500-line
@@ -63,6 +66,9 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
     dispatcher; `pawl_hook.py` is now `send_gates.py` and `pawl_hook.py
     stats` is `pawl.py stats`.
 *   The skill description fits the 150-token budget (141 tokens).
+*   A hook call costs about a third less (Bash 92 to 63 ms, Read 76 to
+    48 ms): modules compile once into `PAWL_DATA/pycache`, and the hot path
+    no longer imports `dataclasses` or `argparse`.
 *   README tables render on GitHub.
 
 ### Removed
