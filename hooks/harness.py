@@ -321,6 +321,8 @@ VOCAB: Dict[str, List[Tuple[str, str]]] = {
         (r"\bview_file\b", "Read"),
         (r"\brun_command\b", "Bash"),
         (r"\bmanage_task\b", "TaskStop"),
+        (r"\bReplacementContent equals TargetContent\b",
+         "new_string equals old_string"),
         (r"; end the turn, or use the schedule tool with"
          r" TimerCondition=<task-id>\.", "; end the turn and let it notify"
          " you."),

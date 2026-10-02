@@ -28,6 +28,9 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
     `~/.agent-skills/pawl`, neither of which any harness loads.
 *   `check_portable.py` scanned `.venv/`, so the gate failed in the
     virtualenv CLAUDE.md asks for.
+*   Claude Code: the no-op edit reason named Antigravity's
+    `ReplacementContent` and `TargetContent`; it now says `new_string`
+    equals `old_string`.
 *   `install.sh --source .` handed `.` to the plugin CLIs, which refuse it;
     a local directory is now passed as an absolute path.
 
@@ -68,6 +71,9 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
 *   `PRIVACY.md`: every file pawl reads and writes, and the one place it
     loosens a harness default.
 *   `.githooks/pre-push` runs `check_portable.py` and the battery.
+*   `pawl.py demo`: ten canned calls through the real dispatcher in all
+    three harnesses' shapes, printed as a decision matrix (`--verbose`,
+    `--json`); runs in a scratch tree, ignores the user's settings.
 *   CI: Python 3.14 and a ruff (pyflakes, bugbear) job.
 
 ### Changed

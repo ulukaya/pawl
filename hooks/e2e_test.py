@@ -136,7 +136,9 @@ class ClaudeCodeTest(HarnessCase):
     reason = spec["permissionDecisionReason"]
     self.assertTrue(reason.startswith("[PAWL no-op]"))
     self.assertIn("Read the region", reason)
+    self.assertIn("new_string equals old_string", reason)
     self.assertNotIn("view_file", reason)
+    self.assertNotIn("TargetContent", reason)
 
   def test_zero_width_write_is_rewritten_without_approval(self) -> None:
     spec = self.pre("Write", {"file_path": "/app/x.py",

@@ -5,6 +5,8 @@
     pawl.py stop [--harness H] [--only g1,g2]   Stop: clear turn state, idle gate
     pawl.py stats                               per send-gate allow/deny counts
     pawl.py gates                               list gate names
+    pawl.py demo [--verbose | --json]           every gate on canned calls,
+                                                in all three harnesses
 
 --harness is antigravity, claude, codex or auto (default; PAWL_HARNESS, then
 the payload's shape decides). Shipped configs always pass it. --only limits
@@ -45,8 +47,12 @@ def _cache_bytecode() -> None:
   Hooks run as `python3 -B` so nothing is written beside the plugin's
   sources; without a cache every tool call recompiles every module. The
   cache lives under PAWL_DATA/pycache instead. Python skips writing it,
-  silently, when that directory is not writable.
+  silently, when that directory is not writable. `pawl.py demo` writes no
+  cache at all: it promises to leave nothing outside its scratch tree.
   """
+  if sys.argv[1:2] == ["demo"]:
+    sys.dont_write_bytecode = True
+    return
   data = os.environ.get("PAWL_DATA") or os.path.expanduser("~/.pawl")
   sys.pycache_prefix = os.path.join(data, "pycache")
   sys.dont_write_bytecode = False
@@ -231,9 +237,10 @@ def handle(text: str, event: str, hint: str,
 
 USAGE = (
     "usage: pawl.py {pre,stop} [--harness {auto,antigravity,claude,codex}]"
-    " [--only g1,g2] | pawl.py {stats,gates}"
+    " [--only g1,g2] | pawl.py {stats,gates} | pawl.py demo [--verbose |"
+    " --json]"
 )
-COMMANDS = ("pre", "stop", "stats", "gates")
+COMMANDS = ("pre", "stop", "stats", "gates", "demo")
 
 
 class Args(NamedTuple):
@@ -279,8 +286,12 @@ def parse_args(argv: Sequence[str]) -> Args:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+  argv = sys.argv[1:] if argv is None else list(argv)
+  if argv[:1] == ["demo"]:
+    import demo  # pylint: disable=g-import-not-at-top
+    return demo.main(argv[1:])
   try:
-    args = parse_args(sys.argv[1:] if argv is None else argv)
+    args = parse_args(argv)
   except ValueError as exc:
     _warn(f"{exc}\n{USAGE}")
     return 2

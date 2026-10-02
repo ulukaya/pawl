@@ -20,6 +20,38 @@ A pawl is the small part in a ratchet that lets the wheel move forward and stops
 it from slipping back. Every check here works the same way: the current state is
 the floor.
 
+## Try it
+
+No install, no harness, nothing written outside a scratch directory:
+
+```bash
+git clone https://github.com/ulukaya/pawl && python3 pawl/hooks/pawl.py demo
+```
+
+It sends ten calls through the real dispatcher, each written the way
+Antigravity, Claude Code and Codex send it, and prints what each harness
+is told:
+
+```text
+call                        gate        antigravity      claude code      codex
+-------------------------------------------------------------------------------
+make build                  -           allow            silent           silent
+git log --oneline -5        readonly    auto_approve     allow            silent
+git reset --hard            git         force_ask        ask              deny
+tail -f server.log          poll        force_ask        ask              deny
+same pytest run, 3rd time   loop        force_ask        ask              deny
+edit that changes nothing   noop        deny             deny             deny
+write with a U+200B         zero-width  allow +rewrite   +rewrite         allow +rewrite
+send naming ~/.deploy/      egress      deny             deny             deny
+read another session        fence       force_ask        ask              deny
+stop with tail -f running   idle        n/a              block            n/a
+```
+
+`silent` leaves the harness's own prompt in place; `allow` and
+`auto_approve` skip it. Codex hooks can neither ask nor approve, so there
+an ask is a deny that tells the agent how to proceed. `--verbose` adds every
+reason, `--json` every raw answer.
+
 ## What it catches
 
 | The mistake | What pawl does | Gate |
