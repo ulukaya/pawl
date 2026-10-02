@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Tests for hooks/pawl_hook.py.
+"""Tests for the send gates (hooks/send_gates.py) through the dispatcher.
 
-Run: python3 -m unittest hooks_test -v (from hooks/).
+Every case runs `pawl.py pre --only send --harness antigravity`, the command
+the pawl-send-gates group in hooks.json runs.
+
+Run: python3 -m pytest -q hooks_test.py (from hooks/).
 """
 
 from __future__ import annotations
@@ -14,11 +17,20 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 import unittest
 
 HERE = Path(__file__).resolve().parent
-HOOK = HERE / "pawl_hook.py"
+DISPATCHER = HERE / "pawl.py"
+
+
+def entry_argv(event: str, gate: str, harness: str = "antigravity") -> List[str]:
+  """The argv hooks.json runs for one gate group."""
+  return [sys.executable, "-B", str(DISPATCHER), event, "--only", gate,
+          "--harness", harness]
+
+
+SEND_ARGV = entry_argv("pre", "send")
 
 SLOP = (
     "It is not just a migration, it is a fundamental shift in how we think"
@@ -36,7 +48,7 @@ def run_hook(
     env_extra: Optional[Dict[str, str]] = None,
     raw: Optional[str] = None,
 ) -> Dict[str, Any]:
-  """Runs pawl_hook.py on a run_command payload and parses its JSON."""
+  """Runs the send gates on a run_command payload and parses the JSON."""
   if raw is not None:
     payload = raw
   else:
@@ -46,7 +58,7 @@ def run_hook(
   env = dict(os.environ)
   env.update(env_extra or {})
   proc = subprocess.run(
-      [sys.executable, "-B", str(HOOK)],
+      SEND_ARGV,
       input=payload,
       text=True,
       capture_output=True,
@@ -92,7 +104,7 @@ class PawlHookTest(unittest.TestCase):
         {"toolCall": {"name": "run_command", "args": {"CommandLine": command}}}
     )
     proc = subprocess.run(
-        [sys.executable, "-B", str(HOOK)],
+        SEND_ARGV,
         input=payload,
         text=True,
         capture_output=True,
@@ -373,7 +385,7 @@ class PawlHookTest(unittest.TestCase):
         'gchat send --space spaces/A --text "see /home/someone/x/"', self.env
     )
     proc = subprocess.run(
-        [sys.executable, str(HOOK), "stats"],
+        [sys.executable, str(DISPATCHER), "stats"],
         capture_output=True,
         text=True,
         env=self.env,
@@ -387,20 +399,21 @@ class PawlHookTest(unittest.TestCase):
     self.assertEqual(rows["budget"][1:], ["1", "0", "0", "0.0"])
 
 
-GIT_HOOK = HERE / "pawl_git_hook.py"
-POLL_HOOK = HERE / "pawl_poll_hook.py"
-STOP_HOOK = HERE / "pawl_stop_hook.py"
-OSC_HOOK = HERE / "pawl_oscillation_hook.py"
+GIT_HOOK = ("pre", "git")
+POLL_HOOK = ("pre", "poll")
+STOP_HOOK = ("stop", "idle")
+OSC_HOOK = ("pre", "loop")
+OSC_STOP = ("stop", "loop")
 
 
 def run_entry(
-    hook: Path, raw: str, env_extra: Optional[Dict[str, str]] = None
+    hook: Tuple[str, str], raw: str, env_extra: Optional[Dict[str, str]] = None
 ) -> Dict[str, Any]:
-  """Runs one hook entry script on raw stdin and parses its JSON."""
+  """Runs one hooks.json group's dispatcher entry on raw stdin."""
   env = dict(os.environ)
   env.update(env_extra or {})
   proc = subprocess.run(
-      [sys.executable, "-B", str(hook)],
+      entry_argv(*hook),
       input=raw,
       text=True,
       capture_output=True,

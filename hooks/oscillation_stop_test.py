@@ -27,12 +27,13 @@ GROUP = "pawl-oscillation-breaker"
 CONV = "hooks-test-osc-stop"
 
 
-def stop_command() -> List[str]:
-  """argv of the group's Stop hook, with python3 swapped for this python."""
+def group_command(event: str) -> List[str]:
+  """argv of the group's hook for `event`, python3 swapped for this python."""
   hooks = json.loads((ROOT / "hooks.json").read_text())
-  entries = hooks[GROUP].get("Stop") or []
+  entries = hooks[GROUP].get(event) or []
   assert len(entries) == 1, entries
-  argv = shlex.split(entries[0]["command"])
+  entry = entries[0]["hooks"][0] if "hooks" in entries[0] else entries[0]
+  argv = shlex.split(entry["command"])
   assert argv[0] == "python3", argv
   return [sys.executable] + argv[1:]
 
@@ -54,8 +55,8 @@ class OscillationStopTest(unittest.TestCase):
     return json.loads(proc.stdout)
 
   def test_group_stop_entry_clears_the_ring_between_turns(self) -> None:
-    pre = [sys.executable, "-B", str(HERE / "pawl_oscillation_hook.py")]
-    stop = stop_command()
+    pre = group_command("PreToolUse")
+    stop = group_command("Stop")
     poll = json.dumps({
         "conversationId": CONV,
         "toolCall": {"name": "run_command", "args": {"CommandLine": "st"}},

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Tests for the five guard-piece hook groups wired in hooks.json.
 
-Each group must exist with its matcher and run its hooks/ entry; each entry
-must answer one hit and one miss the way its piece does.
+Each group must exist with its matcher and run the dispatcher limited to its
+gate; each entry must answer one hit and one miss the way its piece does.
 
 Run: python3 -m unittest guard_hooks_test -v (from hooks/).
 """
@@ -26,20 +26,20 @@ ROOT = HERE.parent
 GROUPS = {
     "pawl-noop-edit-guard": (
         "replace_file_content|multi_replace_file_content",
-        "pawl_noop_edit_hook.py",
+        "noop",
     ),
     "pawl-zero-width-sanitizer": (
         "write_to_file|replace_file_content|multi_replace_file_content",
-        "pawl_zero_width_hook.py",
+        "zero-width",
     ),
-    "pawl-conversation-fence": (".*", "pawl_fence_hook.py"),
+    "pawl-conversation-fence": (".*", "fence"),
     "pawl-reread-guard": (
         "view_file|run_command|run_shell_command",
-        "pawl_reread_hook.py",
+        "reread",
     ),
     "pawl-readonly-pass": (
         "run_command|run_shell_command",
-        "pawl_readonly_hook.py",
+        "readonly",
     ),
 }
 ORDER = [
@@ -73,7 +73,11 @@ class GuardHooksTest(unittest.TestCase):
     self.assertEqual(pre[0]["matcher"], GROUPS[group][0])
     argv = shlex.split(pre[0]["hooks"][0]["command"])
     self.assertEqual(argv[:2], ["python3", "-B"])
-    self.assertEqual(argv[2], f"hooks/{GROUPS[group][1]}")
+    self.assertEqual(
+        argv[2:],
+        ["hooks/pawl.py", "pre", "--only", GROUPS[group][1], "--harness",
+         "antigravity"],
+    )
     return [sys.executable] + argv[1:]
 
   def run_group(self, group: str, raw: str) -> Dict[str, Any]:

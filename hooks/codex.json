@@ -1,0 +1,29 @@
+{
+  "description": "pawl gates for OpenAI Codex: one dispatcher per event; see hooks/pawl.py",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B \"${PLUGIN_ROOT}/hooks/pawl.py\" pre --harness codex",
+            "timeout": 15,
+            "statusMessage": "pawl: checking the call"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B \"${PLUGIN_ROOT}/hooks/pawl.py\" stop --harness codex",
+            "timeout": 15,
+            "statusMessage": "pawl: closing the turn"
+          }
+        ]
+      }
+    ]
+  }
+}

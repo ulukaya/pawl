@@ -282,3 +282,20 @@ def test_claude_read_tool(s: Session) -> None:
   decisions = [rg.decide(payload)["decision"] for _ in range(6)]
   assert decisions == ["allow"] * 5 + ["deny"]
 
+
+
+def test_end_turn_clears_counts_without_a_turn_id(s: Session) -> None:
+  s.turn = None
+  s.transcript.write_text("{}\n" * 50)  # no USER_INPUT rows: one turn key
+  for _ in range(5):
+    assert s.view(s.skill)["decision"] == "allow"
+  assert s.view(s.skill)["decision"] == "deny"
+  assert rg.end_turn({"conversationId": CONV}) == {"decision": "allow"}
+  assert s.view(s.skill)["decision"] == "allow"
+
+
+def test_end_turn_without_state_or_conversation_allows(s: Session) -> None:
+  del s
+  assert rg.end_turn({"conversationId": "never-seen"}) == {"decision": "allow"}
+  assert rg.end_turn({}) == {"decision": "allow"}
+  assert rg.end_turn("not a dict") == {"decision": "allow"}  # type: ignore[arg-type]

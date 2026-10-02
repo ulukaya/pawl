@@ -7,8 +7,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -B hooks/pawl_hook.py",
-            "timeout": 10
+            "command": "python3 -B hooks/pawl.py pre --only send --harness antigravity",
+            "timeout": 15
           }
         ]
       }
@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -B hooks/pawl_git_hook.py",
+            "command": "python3 -B hooks/pawl.py pre --only git --harness antigravity",
             "timeout": 15
           }
         ]
@@ -37,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -B hooks/pawl_poll_hook.py",
+            "command": "python3 -B hooks/pawl.py pre --only poll --harness antigravity",
             "timeout": 15
           }
         ]
@@ -52,7 +52,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -B hooks/pawl_oscillation_hook.py",
+            "command": "python3 -B hooks/pawl.py pre --only loop --harness antigravity",
             "timeout": 15
           }
         ]
@@ -61,7 +61,7 @@
     "Stop": [
       {
         "type": "command",
-        "command": "python3 -B hooks/pawl_oscillation_hook.py stop",
+        "command": "python3 -B hooks/pawl.py stop --only loop --harness antigravity",
         "timeout": 15
       }
     ]
@@ -74,7 +74,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -B hooks/pawl_noop_edit_hook.py",
+            "command": "python3 -B hooks/pawl.py pre --only noop --harness antigravity",
             "timeout": 15
           }
         ]
@@ -89,7 +89,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -B hooks/pawl_zero_width_hook.py",
+            "command": "python3 -B hooks/pawl.py pre --only zero-width --harness antigravity",
             "timeout": 15
           }
         ]
@@ -104,7 +104,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -B hooks/pawl_fence_hook.py",
+            "command": "python3 -B hooks/pawl.py pre --only fence --harness antigravity",
             "timeout": 15
           }
         ]
@@ -119,10 +119,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -B hooks/pawl_reread_hook.py",
+            "command": "python3 -B hooks/pawl.py pre --only reread --harness antigravity",
             "timeout": 15
           }
         ]
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python3 -B hooks/pawl.py stop --only reread --harness antigravity",
+        "timeout": 15
       }
     ]
   },
@@ -134,7 +141,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -B hooks/pawl_readonly_hook.py",
+            "command": "python3 -B hooks/pawl.py pre --only readonly --harness antigravity",
             "timeout": 15
           }
         ]
@@ -146,7 +153,7 @@
     "Stop": [
       {
         "type": "command",
-        "command": "python3 -B hooks/pawl_stop_hook.py",
+        "command": "python3 -B hooks/pawl.py stop --only idle --harness antigravity",
         "timeout": 15
       }
     ]

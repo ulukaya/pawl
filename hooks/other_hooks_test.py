@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for pawl_git_hook, pawl_poll_hook, pawl_oscillation_hook, pawl_stop_hook.
+"""Tests for the git, poll, loop and idle groups through the dispatcher.
 
 Run: python3 -m unittest other_hooks_test -v (from hooks/).
 """

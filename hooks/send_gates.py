@@ -1,23 +1,18 @@
 #!/usr/bin/env python3
-"""pawl_hook.py: one PreToolUse hook running the three send-time gates in order.
+"""send_gates.py: the three send-time gates, run in order on one command.
 
-Reads the tool call JSON on stdin (Jetski shape: {"toolCall": {"name",
-"args"}}, also the {"tool_name", "tool_input"} shape) and prints one decision:
-
-    {"decision": "allow"}
-    {"decision": "deny", "reason": "..."}
-    {"decision": "force_ask", "reason": "..."}   budget ceiling: only a human
-                                                 click passes
-
-Only command lines that look like a send (chat, mail, social) are gated.
-Everything else is allowed without touching any state. For a send, the order
-is:
+The dispatcher (pawl.py, gate `send`) hands decide() the shell command of a
+run_command / Bash call. Only command lines that look like a send (chat,
+mail, social) are gated; everything else is allowed without touching any
+state. For a send, the order is:
 
     1. egress firewall   fails closed: a broken rules file blocks the send;
                          scans only the outbound payload (egress_payload.py)
     2. prose gate        fails open:  scores the longest quoted string when it
                                       is long enough
-    3. send budget       fails open:  spends one unit per channel per local day
+    3. send budget       fails open:  spends one unit per channel per local day;
+                                      at the ceiling the human decides
+                                      (force_ask)
 
 Configuration lives under PAWL_DATA (default ~/.pawl, the same default every
 piece uses):
@@ -25,6 +20,7 @@ piece uses):
                          first run
     send_budget.json     send budget counter (SEND_BUDGET_STATE_DIR defaults to
                          PAWL_DATA here)
+    gate_events.jsonl    one row per evaluated gate; `pawl.py stats` reads it
     PAWL_DISABLE         comma list of gates to skip: egress,prose,budget
 """
 
@@ -42,7 +38,8 @@ from typing import Any, Dict, Optional, Set, Tuple
 HERE = Path(__file__).resolve().parent
 PIECES = HERE.parent / "pieces"
 for sub in ("send-budget", "egress-firewall", "prose-gate"):
-  sys.path.insert(0, str(PIECES / sub))
+  if str(PIECES / sub) not in sys.path:
+    sys.path.insert(0, str(PIECES / sub))
 
 # pylint: disable=g-import-not-at-top
 import egress_firewall  # noqa: E402
@@ -52,49 +49,23 @@ import send_budget  # noqa: E402
 
 # pylint: enable=g-import-not-at-top
 
-import pawl_harness  # noqa: E402
-
 DEFAULT_RULES = HERE / "egress_rules.default.json"
 PROSE_MIN_WORDS = 40
 _QUOTED = re.compile(r"'((?:[^'\\]|\\.)*)'|\"((?:[^\"\\]|\\.)*)\"", re.S)
 
 
 def data_dir() -> Path:
-  return Path(os.environ.get("PAWL_DATA", os.path.expanduser("~/.pawl")))
+  return Path(os.environ.get("PAWL_DATA") or os.path.expanduser("~/.pawl"))
 
 
-# The budget piece keeps its own state dir env; point it at PAWL_DATA unless
-# the caller set it.
-os.environ.setdefault("SEND_BUDGET_STATE_DIR", str(data_dir()))
+def point_budget_at_pawl_data() -> None:
+  """The budget piece keeps its own state dir env; default it to PAWL_DATA."""
+  os.environ.setdefault("SEND_BUDGET_STATE_DIR", str(data_dir()))
 
 
 def disabled() -> Set[str]:
   raw = os.environ.get("PAWL_DISABLE", "")
   return {g.strip() for g in raw.split(",") if g.strip()}
-
-
-DECISIONS = ("allow", "deny", "force_ask")
-
-
-def emit(
-    decision: str,
-    reason: str = "",
-    payload: Optional[Dict[str, Any]] = None,
-) -> None:
-  """Writes one PreToolUse decision: allow, deny, or force_ask."""
-  assert decision in DECISIONS, decision
-  pawl_harness.emit_decision(decision, reason=reason, payload=payload)
-
-
-def command_from(payload: Dict[str, Any]) -> str:
-  call = payload.get("toolCall") or payload.get("tool_call") or {}
-  args = (
-      call.get("args")
-      or call.get("arguments")
-      or payload.get("tool_input")
-      or {}
-  )
-  return str(args.get("CommandLine") or args.get("command") or "")
 
 
 def rules_path() -> Path:
@@ -211,10 +182,8 @@ def gate_budget(command: str) -> str:
     _spend(channel, describe, override=True)
   except Exception:  # pylint: disable=broad-exception-caught
     # fail open: a broken budget piece must not block sends
-
     return ""
-  return (  # pylint: disable=broad-exception-caught
-      # fail open: a broken prose gate must not block sends
+  return (
       f"{ASK}[PAWL budget] {why} ({used}/{ceiling} today). Approve to send"
       " anyway; the send is logged as a human override."
   )
@@ -249,7 +218,6 @@ def record_event(gate: str, decision: str, override: bool = False) -> None:
       fh.write(json.dumps(row) + "\n")
   except Exception:  # pylint: disable=broad-exception-caught
     # fail open: telemetry must never break a hook
-
     return
 
 
@@ -299,8 +267,13 @@ def decide(command: str) -> Tuple[str, str]:
   Returns:
     (decision, reason): allow with "", deny or force_ask with a reason.
   """
-  if not command or send_budget.classify_command(command) is None:
+  try:
+    if not command or send_budget.classify_command(command) is None:
+      return "allow", ""
+  except Exception:  # pylint: disable=broad-exception-caught
+    # fail open: an unclassifiable command is not a send we can gate
     return "allow", ""
+  point_budget_at_pawl_data()
   off = disabled()
   for name, gate in GATES:
     if name in off:
@@ -327,25 +300,3 @@ def print_stats() -> None:
         f"{name:<8}{g['allow']:>7}{g['deny']:>7}{g['override']:>10}"
         f"{g['deny_rate']:>11}"
     )
-
-
-def main() -> None:
-  if sys.argv[1:] == ["stats"]:
-    print_stats()
-    return
-  payload: Dict[str, Any] = {}
-  try:
-    data = json.loads(sys.stdin.read() or "{}")
-    if isinstance(data, dict):
-      payload = data
-    command = command_from(payload)
-  except Exception:  # pylint: disable=broad-exception-caught
-    # fail open: unreadable input is not the agent's fault
-    emit("allow", payload=payload)
-    return
-  decision, reason = decide(command)
-  emit(decision, reason, payload=payload)
-
-
-if __name__ == "__main__":
-  main()

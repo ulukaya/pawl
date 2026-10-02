@@ -200,13 +200,18 @@ def tool_and_args(payload: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
   return name, args if isinstance(args, dict) else {}
 
 
-def _evaluate(payload: Dict[str, Any]) -> Dict[str, str]:
+def conversation_of(payload: Dict[str, Any]) -> str:
   conv = (
       payload.get("conversationId")
       or payload.get("conversation_id")
       or payload.get("session_id")
   )
-  if os.environ.get(OFF_ENV) == "1" or not isinstance(conv, str) or not conv:
+  return conv if isinstance(conv, str) else ""
+
+
+def _evaluate(payload: Dict[str, Any]) -> Dict[str, str]:
+  conv = conversation_of(payload)
+  if os.environ.get(OFF_ENV) == "1" or not conv:
     return dict(ALLOW)
   tool, args = tool_and_args(payload)
   cwd = str(args.get("Cwd") or args.get("cwd") or os.getcwd())
@@ -241,6 +246,27 @@ def decide(payload: Dict[str, Any]) -> Dict[str, str]:
     # fail open: a reread counter never blocks on its own bug
     sys.stderr.write(f"[{HOOK_NAME}] internal error, failing open: {exc!r}\n")
     return dict(ALLOW)
+
+
+def end_turn(payload: Dict[str, Any]) -> Dict[str, str]:
+  """Stop: the turn is over, so its counts go. Always allows.
+
+  Harnesses without a turn id (Claude Code) rely on this to start each turn
+  fresh; with a turn id it only removes a file the next turn would ignore.
+
+  Args:
+    payload: the Stop payload, read for a conversation id.
+
+  Returns:
+    The allow decision.
+  """
+  conv = conversation_of(payload) if isinstance(payload, dict) else ""
+  if conv:
+    try:
+      state_path(conv).unlink()
+    except OSError:
+      pass
+  return dict(ALLOW)
 
 
 def run_hook(raw: str) -> Dict[str, str]:
