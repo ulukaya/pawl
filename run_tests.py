@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runs every pawl test: 17 piece suites, hooks, root gate, eval grader twins.
+"""Runs every pawl test: hooks, each piece, the root tools, eval grader twins.
 
 Requires pytest; exits 2 when pytest is missing, 1 on any test failure,
 0 when all suites pass.
@@ -19,8 +19,9 @@ SUITES = (
     + sorted(p for p in (ROOT / "pieces").iterdir() if p.is_dir())
     + [
         ROOT / "test_check_portable.py",
+        ROOT / "test_install.py",
         ROOT / "eval" / "fixtures" / "test_validate.py",
-    ]  # root gate suite and the grader twins: one file each, no recursion
+    ]  # root tools and the grader twins: one file each, no recursion
 )
 SUITE_TIMEOUT = 45
 HAVE_PYTEST = importlib.util.find_spec("pytest") is not None
