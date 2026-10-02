@@ -149,6 +149,9 @@ if [[ "$TARGET_CODEX" -eq 1 ]]; then
   echo "==> OpenAI Codex / Agent Skills..."
   symlink_path "$REPO/skills/pawl" "$CODEX_DIR/skills/pawl"
   symlink_path "$REPO/skills/pawl" "$AGENT_SKILLS_DIR/pawl"
+  if [[ -f "$CODEX_DIR/config.toml" ]]; then
+    echo "codex: to enable PreToolUse hooks, see harnesses/codex/config.toml"
+  fi
 fi
 
 if ! "$PYTHON" -c 'import pytest' 2> /dev/null; then

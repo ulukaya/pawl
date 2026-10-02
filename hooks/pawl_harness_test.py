@@ -45,6 +45,8 @@ class PawlHarnessTest(unittest.TestCase):
   def test_is_claude_harness_env_override(self) -> None:
     with mock.patch.dict("os.environ", {"PAWL_HARNESS": "claude"}):
       self.assertTrue(harness.is_claude_harness({}))
+    with mock.patch.dict("os.environ", {"PAWL_HARNESS": "codex"}):
+      self.assertTrue(harness.is_exitcode_harness({}))
 
   def test_emit_decision_antigravity_allow(self) -> None:
     stdout = io.StringIO()

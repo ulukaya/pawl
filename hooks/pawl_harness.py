@@ -21,15 +21,19 @@ CLAUDE_EVENTS = frozenset(
 )
 
 
-def is_claude_harness(payload: Dict[str, Any]) -> bool:
-  """True when the invocation comes from Claude Code."""
-  if os.environ.get("PAWL_HARNESS") == "claude":
+def is_exitcode_harness(payload: Dict[str, Any]) -> bool:
+  """True when the invocation comes from Claude Code or Codex."""
+  harness = (os.environ.get("PAWL_HARNESS") or "").lower()
+  if harness in ("claude", "codex"):
     return True
   if payload.get("hook_event_name") in CLAUDE_EVENTS:
     return True
   if payload.get("tool_name") in CLAUDE_TOOLS and "toolCall" not in payload:
     return True
   return False
+
+
+is_claude_harness = is_exitcode_harness
 
 
 def emit_decision(
