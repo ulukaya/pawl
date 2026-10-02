@@ -76,3 +76,38 @@ class MergeTest(unittest.TestCase):
 
 if __name__ == "__main__":
   unittest.main()
+
+
+class PluginOptionsTest(unittest.TestCase):
+  """Claude Code exports each plugin option as CLAUDE_PLUGIN_OPTION_<KEY>."""
+
+  def apply(self, env):
+    pawl.apply_plugin_options(env)
+    return env
+
+  def test_options_become_pawl_settings(self) -> None:
+    env = self.apply({
+        "CLAUDE_PLUGIN_OPTION_DISABLE": "git, poll",
+        "CLAUDE_PLUGIN_OPTION_PROTECTED_ROOTS": "/a:/b",
+        "CLAUDE_PLUGIN_OPTION_STRICT_FENCE": "true",
+        "CLAUDE_PLUGIN_OPTION_READONLY_AUTO_APPROVE": "false",
+    })
+    self.assertEqual(env["PAWL_DISABLE"], "git, poll")
+    self.assertEqual(env["PAWL_GIT_PROTECTED_ROOTS"], "/a:/b")
+    self.assertEqual(env["PAWL_CONVERSATION_FENCE_STRICT"], "1")
+    self.assertEqual(env["PAWL_READONLY_PASS_OFF"], "1")
+
+  def test_defaults_and_empty_values_change_nothing(self) -> None:
+    env = self.apply({
+        "CLAUDE_PLUGIN_OPTION_DISABLE": "",
+        "CLAUDE_PLUGIN_OPTION_PROTECTED_ROOTS": "",
+        "CLAUDE_PLUGIN_OPTION_STRICT_FENCE": "false",
+        "CLAUDE_PLUGIN_OPTION_READONLY_AUTO_APPROVE": "true",
+    })
+    self.assertEqual(sorted(env), sorted(
+        k for k in env if k.startswith("CLAUDE_PLUGIN_OPTION_")))
+
+  def test_an_env_the_user_set_wins(self) -> None:
+    env = self.apply({"CLAUDE_PLUGIN_OPTION_DISABLE": "git",
+                      "PAWL_DISABLE": "loop"})
+    self.assertEqual(env["PAWL_DISABLE"], "loop")

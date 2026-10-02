@@ -54,6 +54,39 @@ def _cache_bytecode() -> None:
 
 _cache_bytecode()
 
+# Claude Code exports each plugin option the user set in /config as
+# CLAUDE_PLUGIN_OPTION_<KEY>; each maps onto the setting the gates read.
+TRUE = frozenset({"1", "true", "yes", "on"})
+PLUGIN_OPTIONS = (
+    ("DISABLE", "PAWL_DISABLE", lambda v: v),
+    ("PROTECTED_ROOTS", "PAWL_GIT_PROTECTED_ROOTS", lambda v: v),
+    ("STRICT_FENCE", "PAWL_CONVERSATION_FENCE_STRICT",
+     lambda v: "1" if v.lower() in TRUE else ""),
+    ("READONLY_AUTO_APPROVE", "PAWL_READONLY_PASS_OFF",
+     lambda v: "" if v.lower() in TRUE else "1"),
+)
+
+
+def apply_plugin_options(env=os.environ) -> None:
+  """Copies Claude Code plugin options into PAWL_* settings.
+
+  A PAWL_* variable the user exported wins over the plugin option, and an
+  option that maps to "" (a default) sets nothing.
+
+  Args:
+    env: the environment to read and update.
+  """
+  for key, target, convert in PLUGIN_OPTIONS:
+    raw = env.get(f"CLAUDE_PLUGIN_OPTION_{key}")
+    if raw is None or target in env:
+      continue
+    value = convert(raw.strip())
+    if value:
+      env[target] = value
+
+
+apply_plugin_options()
+
 # pylint: disable=g-import-not-at-top
 import gates  # noqa: E402
 import harness  # noqa: E402
