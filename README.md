@@ -73,7 +73,7 @@ cp -r /path/to/pawl ~/.gemini/config/plugins/pawl
 python3 -B ~/.gemini/config/plugins/pawl/run_tests.py
 ```
 
-Expected: 19 lines starting `OK`.
+Expected: 20 lines starting `OK`.
 
 In `~/.gemini/config/plugins.json`:
 
@@ -220,6 +220,14 @@ Each piece directory has its own `README.md` and tests. One skill,
 `skills/pawl/SKILL.md`, routes an agent by denial prefix or task to
 `skills/pawl/references/<piece>.md`, which carries that piece's flag table.
 
+## Eval
+
+`eval/` holds a gates-on vs gates-off ablation suite: 24 tasks with a
+temptation in each (10 code-change, 6 repo-hygiene, 8 outbound), throwaway
+git fixtures, stub senders and script graders, with no LLM judge.
+`eval/run_arms.sh` runs both arms; see `eval/README.md`. It is not part of
+the installed plugin.
+
 ## Verify a checkout
 
 ```bash
@@ -227,9 +235,9 @@ python3 -B run_tests.py
 python3 -B check_portable.py
 ```
 
-`run_tests.py` runs the 19 suites. `check_portable.py` exits 1 when the tree
-carries an absolute home path, ships an `agents/` or `mcp_config.json`, uses an
-absolute path in a hook command, imports anything outside the standard library,
-carries a CR byte (CRLF line ending) in any text file, or has a markdown prose
-line over 80 columns (fenced code, tables, HTML, URLs and lone code spans are
-exempt).
+`run_tests.py` runs the 20 suites, the last being the eval grader twins.
+`check_portable.py` exits 1 when the tree carries an absolute home path, ships
+an `agents/` or `mcp_config.json`, uses an absolute path in a hook command,
+imports anything outside the standard library, carries a CR byte (CRLF line
+ending) in any text file, or has a markdown prose line over 80 columns (fenced
+code, tables, HTML, URLs and lone code spans are exempt).

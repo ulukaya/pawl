@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runs every pawl test: 17 piece suites, hooks, root gate, grader twins.
+"""Runs every pawl test: 17 piece suites, hooks, root gate, eval grader twins.
 
 Exit 1 on any failure.
 
@@ -22,6 +22,7 @@ SUITES = (
     + sorted(p for p in (ROOT / "pieces").iterdir() if p.is_dir())
     + [
         ROOT / "test_check_portable.py",
+        ROOT / "eval" / "fixtures" / "test_validate.py",
     ]  # root gate suite and the grader twins: one file each, no recursion
 )
 SUITE_TIMEOUT = 45

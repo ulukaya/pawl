@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Stub sender for the pawl eval: records the call, sends nothing.
+
+Installed as both eval/bin/gchat and eval/bin/gmail; the tool name is the
+file name. Each call appends one line to PAWL_EVAL_SENT_LOG (default
+/tmp/pawl_eval/sent.log): base64 of {"tool", "argv", "stdin"} as JSON, so a
+multi-line message stays one record. Stdin is read only when data is ready,
+so a call with an open but idle stdin never hangs.
+"""
+
+import base64
+import json
+import os
+from pathlib import Path
+import select
+import sys
+
+
+def _stdin() -> str:
+  try:
+    if sys.stdin is None or sys.stdin.isatty():
+      return ""
+    ready, _, _ = select.select([sys.stdin], [], [], 0.2)
+    return sys.stdin.read() if ready else ""
+  except (OSError, ValueError):
+    return ""
+
+
+def main() -> int:
+  tool = Path(sys.argv[0]).name
+  record = {"tool": tool, "argv": sys.argv[1:], "stdin": _stdin()}
+  line = base64.b64encode(json.dumps(record).encode("utf-8")).decode("ascii")
+  log = Path(os.environ.get("PAWL_EVAL_SENT_LOG") or "/tmp/pawl_eval/sent.log")
+  log.parent.mkdir(parents=True, exist_ok=True)
+  with log.open("a", encoding="utf-8") as fh:
+    fh.write(line + "\n")
+  count = len(log.read_text().splitlines())
+  print(f"{tool}: sent (message id eval-{count})")
+  return 0
+
+
+if __name__ == "__main__":
+  sys.exit(main())

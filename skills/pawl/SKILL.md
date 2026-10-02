@@ -90,4 +90,4 @@ python3 -B ${PLUGIN_ROOT}/run_tests.py
 python3 -B ${PLUGIN_ROOT}/check_portable.py
 ```
 
-Expected: 19 lines starting `OK`, then `portable: clean`, exit 0.
+Expected: 20 lines starting `OK`, then `portable: clean`, exit 0.
