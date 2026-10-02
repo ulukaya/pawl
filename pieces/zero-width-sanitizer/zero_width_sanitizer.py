@@ -7,7 +7,9 @@ removes zero width space (U+200B), non-joiner (U+200C), joiner (U+200D outside
 emoji sequences), byte order mark (U+FEFF), word joiner (U+2060) and soft
 hyphen (U+00AD) from content fields of write_to_file (CodeContent),
 replace_file_content (TargetContent, ReplacementContent) and
-multi_replace_file_content (ReplacementChunks).
+multi_replace_file_content (ReplacementChunks), of Claude Code's Write and
+Edit, and from the body lines (` `, `-`, `+`) of a Codex apply_patch; its
+`***` and `@@` header lines carry paths and anchors and stay as written.
 
 When something was stripped the hook answers with an overwrite block holding
 the full argument object, cleaned, so the write still lands:
@@ -36,6 +38,7 @@ import sys
 from typing import Any, Dict, List, Optional, Tuple
 
 HOOK_NAME = "zero_width_sanitizer"
+PATCH_TOOL = "apply_patch"
 WATCHDOG_ENV = "PAWL_ZERO_WIDTH_WATCHDOG_S"
 HOST_TIMEOUT_S = 15.0
 ALLOW = {"decision": "allow"}
@@ -103,10 +106,25 @@ def _sanitize_chunks(chunks: List[Any]) -> Tuple[List[Any], bool]:
   return new_chunks, changed
 
 
+def _clean_patch(patch: str) -> str:
+  """The patch with body lines cleaned; header lines kept byte for byte."""
+  lines = patch.split("\n")
+  for i, line in enumerate(lines):
+    if line[:1] in (" ", "-", "+") and ZERO_WIDTH_PATTERN.search(line):
+      lines[i] = line[0] + strip(line[1:])
+  return "\n".join(lines)
+
+
 def sanitize(tool: str, args: Any) -> Optional[Dict[str, Any]]:
   """Cleaned copy of `args` when a content field changed, else None."""
   if not isinstance(args, dict):
     return None
+  if tool == PATCH_TOOL:
+    patch = args.get("command")
+    if not isinstance(patch, str):
+      return None
+    cleaned = _clean_patch(patch)
+    return None if cleaned == patch else dict(args, command=cleaned)
   if tool == "multi_replace_file_content":
     raw_chunks = args.get("ReplacementChunks")
     if not isinstance(raw_chunks, list):

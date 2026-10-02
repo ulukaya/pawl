@@ -230,6 +230,22 @@ class CodexTest(HarnessCase):
   def test_quiet_stop_is_silent(self) -> None:
     self.assertIsNone(self.stop())
 
+  def test_noop_patch_is_denied(self) -> None:
+    patch = ("*** Begin Patch\n*** Update File: a.py\n@@\n-x\n+x\n"
+             "*** End Patch\n")
+    spec = self.pre("apply_patch", {"command": patch})
+    self.assertEqual(spec["permissionDecision"], "deny")
+    self.assertIn("[PAWL no-op] apply_patch on a.py",
+                  spec["permissionDecisionReason"])
+
+  def test_zero_width_patch_is_rewritten(self) -> None:
+    patch = ("*** Begin Patch\n*** Add File: a.py\n+a\u200bb\n"
+             "*** End Patch\n")
+    spec = self.pre("apply_patch", {"command": patch})
+    self.assertEqual(spec["permissionDecision"], "allow")
+    self.assertEqual(spec["updatedInput"],
+                     {"command": patch.replace("\u200b", "")})
+
   def test_third_identical_call_is_denied(self) -> None:
     for _ in range(2):
       self.assertIsNone(self.pre("Bash", {"command": "make test"}))

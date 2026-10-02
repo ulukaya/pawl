@@ -7,6 +7,12 @@ call and a round of context and changes nothing; the agent then resends it with
 a different anchor. Refusing the first one sends it back to view_file, the step
 it skipped. Equality is exact: a whitespace change is a real edit.
 
+Claude Code's Edit (old_string, new_string) is read the same way. A Codex
+apply_patch is a no-op when it only updates files (no Add, Delete or Move)
+and every hunk's old side (context and `-` lines) equals its new side
+(context and `+` lines), compared hunk by hunk so a line moved past context
+is still an edit.
+
 Decision on stdout:
 
     {"decision": "allow"}
@@ -46,7 +52,10 @@ HOST_TIMEOUT_S = 15.0
 ALLOW = {"decision": "allow"}
 REPLACE_TOOL = "replace_file_content"
 MULTI_TOOL = "multi_replace_file_content"
+PATCH_TOOL = "apply_patch"
 CLAUDE_EDIT_TOOLS = frozenset({"Edit", "edit"})
+_FILE_OPS = ("*** Add File: ", "*** Delete File: ", "*** Move to: ")
+_UPDATE = "*** Update File: "
 
 
 # --- rule ---------------------------------------------------------------------
@@ -75,8 +84,59 @@ def _chunks(tool: str, args: Any) -> List[Any]:
   return chunks if isinstance(chunks, list) else []
 
 
+def _patch_updates(patch: str) -> Optional[List[Tuple[str, List[List[str]]]]]:
+  """(path, hunks) per Update File; None when the patch does anything else.
+
+  Args:
+    patch: apply_patch text (`*** Begin Patch` ... `*** End Patch`).
+
+  Returns:
+    Hunk bodies split at `@@` lines, or None for an Add, Delete or Move, a
+    body line before any Update, or no Update at all.
+  """
+  files: List[Tuple[str, List[List[str]]]] = []
+  for line in patch.splitlines():
+    if line.startswith(_FILE_OPS):
+      return None
+    if line.startswith(_UPDATE):
+      files.append((line[len(_UPDATE):].strip(), [[]]))
+    elif line.startswith("***"):
+      continue  # Begin Patch, End Patch, End of File
+    elif not files:
+      return None
+    elif line.startswith("@@"):
+      files[-1][1].append([])
+    else:
+      files[-1][1][-1].append(line)
+  return files or None
+
+
+def _hunk_is_noop(lines: List[str]) -> bool:
+  old = [l[1:] for l in lines if l[:1] in ("", " ", "-")]
+  new = [l[1:] for l in lines if l[:1] in ("", " ", "+")]
+  return old == new
+
+
+def patch_noop_reason(args: Any) -> str:
+  """Deny reason when an apply_patch changes nothing, else ''."""
+  text = args.get("command") if isinstance(args, dict) else None
+  files = _patch_updates(text) if isinstance(text, str) else None
+  if not files:
+    return ""
+  if not all(_hunk_is_noop(h) for _, hunks in files for h in hunks):
+    return ""
+  names = ", ".join(os.path.basename(path) or path for path, _ in files)
+  return (
+      f"{PREFIX} {PATCH_TOOL} on {names}: every hunk puts back the lines it"
+      " takes out, so the patch changes nothing. Re-read the region you"
+      " meant to change and send the patch with the new text."
+  )
+
+
 def noop_reason(tool: str, args: Any) -> str:
   """Deny reason when every chunk of this edit is a no-op, else ''."""
+  if tool == PATCH_TOOL:
+    return patch_noop_reason(args)
   chunks = _chunks(tool, args)
   if not chunks or not all(_is_noop(c) for c in chunks):
     return ""
@@ -160,7 +220,9 @@ def decide(payload: Dict[str, Any]) -> Dict[str, str]:
   reason = noop_reason(tool, args)
   if not reason:
     return dict(ALLOW)
-  record_denial(payload, str(args.get("TargetFile") or tool))
+  subject = args.get("TargetFile") or args.get("file_path") or args.get(
+      "command") or tool
+  record_denial(payload, str(subject))
   return {"decision": "deny", "reason": reason}
 
 

@@ -236,3 +236,54 @@ def test_sanitize_claude_edit_tool() -> None:
       "new_string": "newtext",
   }
 
+
+
+# --- apply_patch (Codex) --------------------------------------------------------
+
+ZW = "​"
+
+
+def test_patch_body_lines_are_cleaned_and_headers_kept() -> None:
+  dirty = (
+      "*** Begin Patch\n"
+      f"*** Update File: src/a{ZW}.py\n"
+      f"@@ def f{ZW}():\n"
+      f"-    return {ZW}1\n"
+      f"+    return 2{ZW}\n"
+      f"     # ctx{ZW}\n"
+      f"*** Add File: n.py\n"
+      f"+x{ZW}y\n"
+      "*** End Patch\n"
+  )
+  out = zws.sanitize("apply_patch", {"command": dirty, "extra": 1})
+  assert out == {"extra": 1, "command": (
+      "*** Begin Patch\n"
+      f"*** Update File: src/a{ZW}.py\n"
+      f"@@ def f{ZW}():\n"
+      "-    return 1\n"
+      "+    return 2\n"
+      "     # ctx\n"
+      "*** Add File: n.py\n"
+      "+xy\n"
+      "*** End Patch\n"
+  )}
+
+
+def test_clean_patch_and_odd_shapes_are_left_alone() -> None:
+  clean = "*** Begin Patch\n*** Update File: a.py\n-x\n+y\n*** End Patch\n"
+  assert zws.sanitize("apply_patch", {"command": clean}) is None
+  assert zws.sanitize("apply_patch", {"command": 3}) is None
+  assert zws.sanitize("apply_patch", "-x​") is None
+
+
+def test_patch_keeps_emoji_joiners() -> None:
+  family = "\U0001f468‍\U0001f469"
+  patch = f"*** Begin Patch\n*** Add File: e.md\n+{family}\n*** End Patch\n"
+  assert zws.sanitize("apply_patch", {"command": patch}) is None
+
+
+def test_hook_overwrites_a_codex_patch() -> None:
+  patch = f"*** Begin Patch\n*** Add File: n.py\n+a{ZW}b\n*** End Patch\n"
+  out = run_hook(call("apply_patch", {"command": patch}))
+  assert out == {"decision": "allow", "overwrite": {
+      "command": "*** Begin Patch\n*** Add File: n.py\n+ab\n*** End Patch\n"}}

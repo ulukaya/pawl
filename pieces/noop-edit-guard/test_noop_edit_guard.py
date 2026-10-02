@@ -244,3 +244,66 @@ def test_claude_edit_tool_different_allows() -> None:
   }
   assert neg.noop_reason("Edit", args) == ""
 
+
+
+# --- apply_patch (Codex) --------------------------------------------------------
+
+
+def patch(*sections: str) -> Dict[str, str]:
+  return {"command": "*** Begin Patch\n" + "".join(sections) + "*** End Patch\n"}
+
+
+def update(path: str, body: str) -> str:
+  return f"*** Update File: {path}\n{body}"
+
+
+def test_patch_that_puts_back_its_lines_denies_and_a_change_allows() -> None:
+  same = update("src/app.py", "@@ def f():\n-    return 1\n+    return 1\n")
+  reason = neg.noop_reason("apply_patch", patch(same))
+  assert reason.startswith("[PAWL no-op] apply_patch on app.py")
+  assert "view_file" not in reason
+  changed = update("src/app.py", "@@ def f():\n-    return 1\n+    return 2\n")
+  assert neg.noop_reason("apply_patch", patch(changed)) == ""
+
+
+def test_patch_moving_a_line_past_context_is_a_real_edit() -> None:
+  moved = update("a.py", " a\n-x\n b\n+x\n")
+  assert neg.noop_reason("apply_patch", patch(moved)) == ""
+  kept = update("a.py", " a\n-x\n+x\n b\n")
+  assert neg.noop_reason("apply_patch", patch(kept)).startswith("[PAWL no-op]")
+
+
+def test_patch_every_file_and_hunk_must_be_a_noop() -> None:
+  noop = update("a.py", "@@\n-x\n+x\n@@\n-y\n+y\n")
+  real = update("b.py", "@@\n-x\n+z\n")
+  assert neg.noop_reason("apply_patch", patch(noop, real)) == ""
+  assert neg.noop_reason("apply_patch", patch(noop, update("b.py", "-q\n+q\n")))
+  half = update("a.py", "@@\n-x\n+x\n@@\n-y\n+w\n")
+  assert neg.noop_reason("apply_patch", patch(half)) == ""
+
+
+def test_patch_adding_deleting_or_moving_a_file_allows() -> None:
+  noop = update("a.py", "-x\n+x\n")
+  for other in ("*** Add File: n.py\n", "*** Delete File: d.py\n",
+                "*** Update File: m.py\n*** Move to: m2.py\n-x\n+x\n"):
+    assert neg.noop_reason("apply_patch", patch(noop, other)) == "", other
+
+
+def test_patch_with_only_context_lines_denies() -> None:
+  assert neg.noop_reason("apply_patch", patch(update("a.py", " x\n y\n")))
+
+
+def test_empty_or_malformed_patch_allows() -> None:
+  assert neg.noop_reason("apply_patch", patch()) == ""
+  assert neg.noop_reason("apply_patch", {"command": 7}) == ""
+  assert neg.noop_reason("apply_patch", {}) == ""
+  assert neg.noop_reason("apply_patch", "-x\n+x\n") == ""
+
+
+def test_hook_denies_a_codex_noop_patch(data: Path) -> None:
+  args = patch(update("a.py", "-x\n+x\n"))
+  out = neg.run_hook(payload("apply_patch", args))
+  assert out["decision"] == "deny"
+  rows = (data / "denials.jsonl").read_text().splitlines()
+  assert json.loads(rows[0])["gate"] == "NOOP_EDIT"
+  assert "a.py" not in rows[0]
