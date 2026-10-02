@@ -262,8 +262,12 @@ def parse(text: str, hint: str = "", event: str = PRE) -> Call:
       "cwd": cwd,
       "harness": harness,
   }
-  if _str(data.get("turn_id")):
-    payload["turnId"] = data["turn_id"]
+  # Codex names the turn; Claude Code names the user prompt being served.
+  turn = _str(data.get("turn_id")) or _str(data.get("prompt_id"))
+  if turn:
+    payload["turnId"] = turn
+  if _str(data.get("agent_id")):
+    payload["agentId"] = data["agent_id"]  # a subagent: its own ring, counts
   if event == STOP:
     payload["stopHookActive"] = bool(data.get("stop_hook_active"))
     tasks = data.get("background_tasks")

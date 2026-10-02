@@ -140,6 +140,12 @@ def data_dir() -> Path:
   return Path(os.environ.get("PAWL_DATA") or os.path.expanduser("~/.pawl"))
 
 
+def state_key(payload: Dict[str, Any], conv: str) -> str:
+  """Counts are per conversation, and per subagent inside it (agentId)."""
+  agent = payload.get("agentId")
+  return f"{conv}.{agent}" if isinstance(agent, str) and agent else conv
+
+
 def state_path(conv: str) -> Path:
   safe = _SAFE_CONV_RE.sub("_", conv)[:120] or "unknown"
   return data_dir() / "reread" / f"{safe}.json"
@@ -231,7 +237,8 @@ def _evaluate(payload: Dict[str, Any]) -> Dict[str, str]:
   hits = [h for h in hits if h is not None]
   if not hits:
     return dict(ALLOW)
-  state = load_state(conv, turn_key(payload))
+  owner = state_key(payload, conv)
+  state = load_state(owner, turn_key(payload))
   if state["denials"] >= STAND_DOWN_AFTER:
     return dict(ALLOW)
   reason, subject = "", ""
@@ -243,7 +250,7 @@ def _evaluate(payload: Dict[str, Any]) -> Dict[str, str]:
       subject = key
   if reason:
     state["denials"] += 1
-  save_state(conv, state)
+  save_state(owner, state)
   if not reason:
     return dict(ALLOW)
   record_denial(conv, subject)
@@ -275,7 +282,7 @@ def end_turn(payload: Dict[str, Any]) -> Dict[str, str]:
   conv = conversation_of(payload) if isinstance(payload, dict) else ""
   if conv:
     try:
-      state_path(conv).unlink()
+      state_path(state_key(payload, conv)).unlink()
     except OSError:
       pass
   return dict(ALLOW)

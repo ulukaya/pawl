@@ -226,3 +226,32 @@ def test_idle_expiry_keeps_a_fresh_ring(
   assert ob.observe(CONV, "view_file", {"AbsolutePath": "/a"}) is not None
   _age_ring(120)
   assert ob.load_ring(CONV) == []
+
+
+# --- subagents ----------------------------------------------------------------
+
+
+def agent_call(agent: str, cmd: str = "git status") -> Dict[str, Any]:
+  body: Dict[str, Any] = {
+      "conversationId": CONV,
+      "toolCall": {"name": "run_command", "args": {"CommandLine": cmd}},
+  }
+  if agent:
+    body["agentId"] = agent
+  return ob.decide(body)
+
+
+def test_parallel_subagents_keep_separate_rings() -> None:
+  assert [agent_call(a)["decision"] for a in ("a1", "a2", "a3", "")] == [
+      "allow"] * 4
+  assert [agent_call("a1")["decision"] for _ in range(2)] == [
+      "allow", "force_ask"]
+
+
+def test_stop_clears_the_main_ring_only(data: Path) -> None:
+  for _ in range(2):
+    agent_call("")
+    agent_call("a1")
+  end_turn()
+  assert agent_call("")["decision"] == "allow"
+  assert agent_call("a1")["decision"] == "force_ask"

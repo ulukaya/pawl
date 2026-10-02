@@ -163,6 +163,14 @@ class ClaudeCodeTest(HarnessCase):
     self.assertIsNone(self.stop())
     self.assertIsNone(self.pre("Bash", call))
 
+  def test_parallel_subagents_running_one_command_are_not_a_loop(
+      self) -> None:
+    call = {"command": "make build"}
+    for agent in ("agent-a", "agent-b", "agent-c"):
+      self.assertIsNone(self.pre("Bash", call, agent_id=agent,
+                                 agent_type="Explore"))
+    self.assertIsNone(self.pre("Bash", call))
+
   def test_loop_ask_outranks_read_only_approval(self) -> None:
     for _ in range(2):
       self.assertEqual(self.pre("Bash", {"command": "ls"})[

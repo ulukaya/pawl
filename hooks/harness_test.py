@@ -131,6 +131,14 @@ class ParseTest(unittest.TestCase):
     self.assertEqual(harness.parse(claude("ScheduleWakeup", {})).tool,
                      "schedule")
 
+  def test_claude_prompt_and_agent_ids_key_turn_and_agent(self) -> None:
+    call = harness.parse(claude("Bash", {"command": "ls"}, prompt_id="p-9",
+                                agent_id="ag-1", agent_type="Explore"))
+    self.assertEqual(call.payload["turnId"], "p-9")
+    self.assertEqual(call.payload["agentId"], "ag-1")
+    main = harness.parse(claude("Bash", {"command": "ls"}))
+    self.assertNotIn("agentId", main.payload)
+
   def test_unknown_tools_pass_through(self) -> None:
     call = harness.parse(claude("Grep", {"pattern": "x", "path": "/p"}))
     self.assertEqual((call.tool, call.args),

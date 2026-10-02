@@ -19,9 +19,10 @@ lives at PAWL_DATA/oscillation/<conversation>.json, written with a temp file
 and os.replace. Missing conversation id, unparsable stdin, or any internal
 error fails open: the call runs and nothing is written.
 
+Each subagent (a payload agentId) keeps its own ring inside the conversation.
 The ring is cleared when a turn ends (the `stop` hook entry) and on a
-`schedule` call, so cron and timer wakeups, each its own turn, never add up
-to a loop. A slow retry loop inside one turn still does. PAWL_OSCILLATION_IDLE_S
+`schedule` call, so cron and timer wakeups, each its own turn, never add up to
+a loop. A slow retry loop inside one turn still does. PAWL_OSCILLATION_IDLE_S
 also expires a ring idle that long, measured from the last call's start; it is
 off by default because a slow retry would expire its own ring.
 
@@ -244,6 +245,24 @@ def resolve_conversation_id(payload: Dict[str, Any]) -> str:
   return next((v.strip() for v in vals if isinstance(v, str) and v.strip()), "")
 
 
+def ring_key(payload: Dict[str, Any], conv: str) -> str:
+  """The ring a call lands in: the conversation, or one subagent inside it.
+
+  Claude Code and Codex run subagents under the parent's session id and add
+  an agent id; parallel subagents that each run `git status` once are not
+  a loop, so each agent gets its own ring.
+
+  Args:
+    payload: the hook payload, read for agentId.
+    conv: the conversation id.
+
+  Returns:
+    conv, or conv.agent when the payload names an agent.
+  """
+  agent = payload.get("agentId")
+  return f"{conv}.{agent}" if isinstance(agent, str) and agent else conv
+
+
 def tool_and_args(payload: Dict[str, Any]) -> Tuple[str, Any]:
   """(tool name, args) from a tool-call payload; name is '' when absent."""
   call = payload.get("toolCall") or payload.get("tool_call") or {}
@@ -315,7 +334,7 @@ def decide(payload: Dict[str, Any]) -> Dict[str, str]:
   tool, args = tool_and_args(payload)
   if not conv or not tool:
     return {"decision": "allow"}
-  reason = observe(conv, tool, args)
+  reason = observe(ring_key(payload, conv), tool, args)
   if reason is None:
     return {"decision": "allow"}
   record_denial(GATE, conv, tool)
@@ -335,9 +354,10 @@ def run_hook(raw: str) -> Dict[str, str]:
 def end_turn(raw: str) -> Dict[str, str]:
   """Stop hook decision: the turn is over, so clear its ring. Always allow."""
   try:
-    conv = resolve_conversation_id(read_payload(raw))
+    payload = read_payload(raw)
+    conv = resolve_conversation_id(payload)
     if conv:
-      reset_ring(conv)
+      reset_ring(ring_key(payload, conv))
   except Exception as exc:  # pylint: disable=broad-exception-caught
     # fail open: a Stop hook never blocks on its own bug
     sys.stderr.write(f"[{HOOK_NAME}] stop error, failing open: {exc!r}\n")

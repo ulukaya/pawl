@@ -327,3 +327,18 @@ def test_the_payload_transcript_counts_whatever_its_name(
   out = rg.decide(payload(own))
   assert out["decision"] == "deny"
   assert f"own transcript ({name})" in out["reason"]
+
+
+def test_each_subagent_counts_its_own_reads(s: Session) -> None:
+  def read(agent: str) -> str:
+    body = s.payload("view_file", {"AbsolutePath": str(s.skill)})
+    if agent:
+      body["agentId"] = agent
+    return rg.decide(body)["decision"]
+
+  for agent in ("", "a1", "a2"):
+    assert [read(agent) for _ in range(5)] == ["allow"] * 5
+  assert read("a1") == "deny"
+  rg.end_turn({"conversationId": CONV, "agentId": "a1"})
+  assert read("a1") == "allow"
+  assert read("") == "deny"
