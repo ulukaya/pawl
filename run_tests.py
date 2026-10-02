@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 """Runs every pawl test: 17 piece suites, hooks, root gate, eval grader twins.
 
-Exit 1 on any failure.
-
-Uses pytest when it is installed (two piece suites are plain test functions),
-otherwise falls back to unittest discovery and treats "NO TESTS RAN" as a
-failure.
+Requires pytest; exits 2 when pytest is missing, 1 on any test failure,
+0 when all suites pass.
 """
 
 from __future__ import annotations
@@ -31,33 +28,16 @@ HAVE_PYTEST = importlib.util.find_spec("pytest") is not None
 
 def run_suite(d: Path) -> Tuple[bool, str]:
   cwd = d if d.is_dir() else d.parent
-  if HAVE_PYTEST:
-    cmd = [
-        sys.executable,
-        "-B",
-        "-m",
-        "pytest",
-        "-q",
-        "-p",
-        "no:cacheprovider",
-        str(d),
-    ]
-  elif d.is_dir():
-    cmd = [
-        sys.executable,
-        "-B",
-        "-m",
-        "unittest",
-        "discover",
-        "-s",
-        str(d),
-        "-p",
-        "*test*.py",
-        "-t",
-        str(d),
-    ]
-  else:
-    cmd = [sys.executable, "-B", "-m", "unittest", d.stem]
+  cmd = [
+      sys.executable,
+      "-B",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      str(d),
+  ]
   proc = subprocess.run(
       cmd,
       capture_output=True,
@@ -77,6 +57,13 @@ def run_suite(d: Path) -> Tuple[bool, str]:
 
 
 def main() -> int:
+  if not HAVE_PYTEST:
+    print(
+        "run_tests: pytest is required to run the test suite; install pytest"
+        " or run with a virtualenv (e.g. .venv/bin/python3 run_tests.py)",
+        file=sys.stderr,
+    )
+    return 2
   failed = []
   for d in SUITES:
     ok, tail = run_suite(d)
@@ -91,3 +78,4 @@ def main() -> int:
 
 if __name__ == "__main__":
   sys.exit(main())
+
