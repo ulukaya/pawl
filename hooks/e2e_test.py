@@ -149,6 +149,10 @@ class ClaudeCodeTest(HarnessCase):
     spec = self.pre("Bash", {"command": "git status"})
     self.assertEqual(spec["permissionDecision"], "allow")
 
+  def test_unsandboxed_retry_is_never_auto_approved(self) -> None:
+    self.assertIsNone(self.pre("Bash", {"command": "git status",
+                                        "dangerouslyDisableSandbox": True}))
+
   def test_third_identical_call_asks_and_stop_clears_it(self) -> None:
     call = {"command": "pytest -q tests/test_x.py"}
     self.assertIsNone(self.pre("Bash", call))

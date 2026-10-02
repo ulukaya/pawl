@@ -57,7 +57,16 @@ DECISIONS = frozenset({"allow", "auto_approve", "deny", "force_ask", "block"})
 # reworded on every call, like Antigravity's toolSummary, and would make two
 # identical commands hash apart in the oscillation ring.
 CLAUDE_TOOLS: Dict[str, Tuple[str, Dict[str, str], Dict[str, Any]]] = {
-    "Bash": ("run_command", {"command": "CommandLine"}, {}),
+    "Bash": (
+        "run_command",
+        {
+            "command": "CommandLine",
+            # readonly-pass never approves a call that asks to leave the
+            # sandbox, so the flag must survive translation.
+            "dangerouslyDisableSandbox": "dangerouslyDisableSandbox",
+        },
+        {},
+    ),
     "Write": (
         "write_to_file",
         {"file_path": "TargetFile", "content": "CodeContent"},
