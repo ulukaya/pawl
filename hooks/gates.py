@@ -28,14 +28,15 @@ block. Standard library only.
 
 from __future__ import annotations
 
-import dataclasses
 import importlib
 import json
 import os
 from pathlib import Path  # pylint: disable=g-importing-member
 import sys
 from types import ModuleType
-from typing import Any, Callable, Dict, FrozenSet, List, Optional, Tuple
+from typing import (
+    Any, Callable, Dict, FrozenSet, List, NamedTuple, Optional, Tuple,
+)
 
 from harness import ALLOW, Call, PRE, STOP, Verdict
 
@@ -54,8 +55,7 @@ READS = SHELL | {"view_file"}
 Runner = Callable[[ModuleType, Call], Verdict]
 
 
-@dataclasses.dataclass(frozen=True)
-class Gate:
+class Gate(NamedTuple):
   """One gate: where its piece lives and how to ask it."""
 
   name: str

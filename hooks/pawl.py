@@ -27,17 +27,32 @@ Standard library only.
 
 from __future__ import annotations
 
-import argparse
 import os
 from pathlib import Path  # pylint: disable=g-importing-member
 import signal
 import sys
 from types import ModuleType
-from typing import List, Optional, Sequence, Tuple
+from typing import List, NamedTuple, Optional, Sequence, Tuple
 
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:
   sys.path.insert(0, str(HERE))
+
+
+def _cache_bytecode() -> None:
+  """Compile pawl's modules once, into PAWL_DATA, not into the plugin.
+
+  Hooks run as `python3 -B` so nothing is written beside the plugin's
+  sources; without a cache every tool call recompiles every module. The
+  cache lives under PAWL_DATA/pycache instead. Python skips writing it,
+  silently, when that directory is not writable.
+  """
+  data = os.environ.get("PAWL_DATA") or os.path.expanduser("~/.pawl")
+  sys.pycache_prefix = os.path.join(data, "pycache")
+  sys.dont_write_bytecode = False
+
+
+_cache_bytecode()
 
 # pylint: disable=g-import-not-at-top
 import gates  # noqa: E402
@@ -181,28 +196,61 @@ def handle(text: str, event: str, hint: str,
     disarm_watchdog()
 
 
-def _only(raw: Optional[str]) -> Optional[List[str]]:
-  if raw is None:
-    return None
-  return [n.strip() for n in raw.split(",") if n.strip()]
+USAGE = (
+    "usage: pawl.py {pre,stop} [--harness {auto,antigravity,claude,codex}]"
+    " [--only g1,g2] | pawl.py {stats,gates}"
+)
+COMMANDS = ("pre", "stop", "stats", "gates")
 
 
-def parser() -> argparse.ArgumentParser:
-  ap = argparse.ArgumentParser(
-      prog="pawl.py", description="pawl hook dispatcher"
-  )
-  ap.add_argument("command", choices=("pre", "stop", "stats", "gates"))
-  ap.add_argument(
-      "--harness", default="auto",
-      choices=("auto",) + harness.HARNESSES,
-  )
-  ap.add_argument("--only", default=None,
-                  help="comma list of gate names to run")
-  return ap
+class Args(NamedTuple):
+  command: str
+  harness: str = "auto"
+  only: Optional[List[str]] = None
 
 
-def main(argv: Optional[List[str]] = None) -> int:
-  args = parser().parse_args(argv)
+def parse_args(argv: Sequence[str]) -> Args:
+  """The command line; ValueError with the reason when it is not valid.
+
+  A hook runs on every tool call, so this stays a few lines of plain
+  parsing rather than argparse, which costs more to import than the rest
+  of the dispatcher.
+
+  Args:
+    argv: arguments after the program name.
+
+  Returns:
+    The parsed Args.
+  """
+  if not argv or argv[0] not in COMMANDS:
+    raise ValueError(f"expected one of {', '.join(COMMANDS)}")
+  opts = {"--harness": "auto", "--only": None}
+  rest = list(argv[1:])
+  while rest:
+    flag = rest.pop(0)
+    name, eq, value = flag.partition("=")
+    if name not in opts:
+      raise ValueError(f"unknown option {flag!r}")
+    if not eq:
+      if not rest:
+        raise ValueError(f"{name} needs a value")
+      value = rest.pop(0)
+    opts[name] = value
+  harness_name = str(opts["--harness"])
+  if harness_name not in ("auto",) + harness.HARNESSES:
+    raise ValueError(f"unknown harness {harness_name!r}")
+  raw = opts["--only"]
+  only = None if raw is None else [n.strip() for n in raw.split(",")
+                                   if n.strip()]
+  return Args(argv[0], harness_name, only)
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+  try:
+    args = parse_args(sys.argv[1:] if argv is None else argv)
+  except ValueError as exc:
+    _warn(f"{exc}\n{USAGE}")
+    return 2
   if args.command == "gates":
     for gate in gates.GATES:
       events = [e for e, r in ((PRE, gate.pre), (STOP, gate.stop)) if r]
@@ -211,7 +259,7 @@ def main(argv: Optional[List[str]] = None) -> int:
   if args.command == "stats":
     gates.BY_NAME["send"].load().print_stats()
     return 0
-  only = _only(args.only)
+  only = args.only
   bad = gates.unknown(only or [])
   if bad:
     _warn(f"unknown gate(s) {', '.join(bad)}; see `pawl.py gates`")

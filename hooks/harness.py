@@ -36,12 +36,11 @@ Standard library only.
 
 from __future__ import annotations
 
-import dataclasses
 import json
 import os
 import re
 import shlex
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Dict, List, Mapping, NamedTuple, Optional, Tuple
 
 ANTIGRAVITY = "antigravity"
 CLAUDE = "claude"
@@ -96,32 +95,39 @@ CODEX_TOOLS: Dict[str, Tuple[str, Dict[str, str], Dict[str, Any]]] = {
 SHELL_TOOLS = frozenset({"run_command", "run_shell_command"})
 
 
-@dataclasses.dataclass(frozen=True)
-class Call:
+class Call(NamedTuple):
   """One hook invocation, translated to the canonical dialect."""
 
   harness: str
   event: str
-  tool: str = ""
-  args: Dict[str, Any] = dataclasses.field(default_factory=dict)
-  payload: Dict[str, Any] = dataclasses.field(default_factory=dict)
-  native_tool: str = ""
-  native_args: Dict[str, Any] = dataclasses.field(default_factory=dict)
+  tool: str
+  args: Dict[str, Any]
+  payload: Dict[str, Any]
+  native_tool: str
+  native_args: Dict[str, Any]
   error: str = ""  # set when stdin was not a JSON object
 
 
-@dataclasses.dataclass(frozen=True)
+def failed_call(harness: str, event: str, error: str) -> Call:
+  return Call(harness, event, "", {}, {}, "", {}, error)
+
+
 class Verdict:
   """A gate outcome in the canonical decision words."""
 
-  decision: str = "allow"
-  reason: str = ""
-  overwrite: Optional[Dict[str, Any]] = None
-  gate: str = ""
+  __slots__ = ("decision", "reason", "overwrite", "gate")
 
-  def __post_init__(self) -> None:
-    if self.decision not in DECISIONS:
-      raise ValueError(f"unknown decision {self.decision!r}")
+  def __init__(self, decision: str = "allow", reason: str = "",
+               overwrite: Optional[Dict[str, Any]] = None,
+               gate: str = "") -> None:
+    if decision not in DECISIONS:
+      raise ValueError(f"unknown decision {decision!r}")
+    self.decision, self.reason = decision, reason
+    self.overwrite, self.gate = overwrite, gate
+
+  def __repr__(self) -> str:
+    return (f"Verdict({self.decision!r}, {self.reason!r}, {self.overwrite!r},"
+            f" {self.gate!r})")
 
 
 ALLOW = Verdict()
@@ -242,11 +248,11 @@ def parse(text: str, hint: str = "", event: str = PRE) -> Call:
   try:
     data = json.loads(text or "{}")
   except ValueError as err:
-    return Call(resolve(hint, {}), event, error=f"stdin is not JSON ({err})")
+    return failed_call(resolve(hint, {}), event, f"stdin is not JSON ({err})")
   if not isinstance(data, dict):
     kind = type(data).__name__
-    return Call(resolve(hint, {}), event, error=f"payload is {kind}, not an "
-                "object")
+    return failed_call(resolve(hint, {}), event,
+                       f"payload is {kind}, not an object")
   harness = resolve(hint, data)
   if harness == ANTIGRAVITY:
     return _antigravity_call(data, event)
@@ -335,6 +341,7 @@ VOCAB: Dict[str, List[Tuple[str, str]]] = {
         (r"; approve only if the user asked for it\.", "."),
     ],
 }
+APPROVED = "[PAWL readonly] every clause of the command only reads"
 CODEX_ASK_NOTE = (
     " Codex hooks cannot ask, so pawl denied it: tell the user, who can run"
     " it by hand or set PAWL_DISABLE={gate} for the session."
@@ -348,8 +355,7 @@ def speak(harness: str, reason: str) -> str:
   return reason
 
 
-@dataclasses.dataclass(frozen=True)
-class Rendered:
+class Rendered(NamedTuple):
   stdout: str
   exit_code: int = 0
 
@@ -383,7 +389,8 @@ def _pre_tool_use(call: Call, verdict: Verdict) -> Rendered:
   if decision in ("deny", "force_ask", "auto_approve"):
     word = {"deny": "deny", "force_ask": "ask", "auto_approve": "allow"}
     spec["permissionDecision"] = word[decision]
-    spec["permissionDecisionReason"] = reason.strip() or "pawl"
+    default = APPROVED if decision == "auto_approve" else "pawl"
+    spec["permissionDecisionReason"] = reason.strip() or default
   if verdict.overwrite and decision != "deny":
     spec["updatedInput"] = native_overwrite(call, verdict.overwrite)
     if codex:
