@@ -71,13 +71,20 @@ SAFE_REDIRECT_TARGETS = frozenset({"/dev/null", "&1", "&2"})
 _PUNCT = frozenset("();<>|&")
 _UNQUOTED_BAD = frozenset("$`(){}#\n")
 FENCED_PATH_RE = re.compile(
-    r"(?:^|[/=])\.(?:ssh|gnupg|aws|docker|kube)(?:/|$)"
-    r"|(?:^|[/=])\.(?:netrc|pgpass|git-credentials|npmrc|pypirc|env)$"
+    r"(?:^|[/=])\.(?:ssh|gnupg|aws|docker|kube)(?:[/*=-]|$|[?*])"
+    r"|(?:^|[/=])\.(?:netrc|pgpass|git-credentials|npmrc|pypirc|env(?:[._-].*|[*-].*)?)$"
     r"|(?:^|[/=])\.config/gcloud(?:/|$)"
     r"|(?:^|[/=])id_(?:rsa|dsa|ecdsa|ed25519)"
     r"|(?:^|[/=])(?:brain|conversations)(?:/|$)"
     r"|transcript[^/]*\.jsonl"
     r"|(?:^|/)proc/[^/]+/environ$"
+    r"|^(?:~|/|(?:/usr/local/google)?/(?:home|Users)/[^/]+)/(?:\*|\.\*|\.[a-z]*\*.*)$"
+    r"|^(?:/\*|/\.\*)$"
+)
+SENSITIVE_ROOT_RE = re.compile(
+    r"^(?:~[/]?|/(?:home|Users)(?:/[^/]+(?:/(?:\.gemini|\.antigravity|\.jetski"
+    r"|\.config|brain|conversations)(?:/.*)?)?)?/?|/|~/(?:\.gemini|\.antigravity"
+    r"|\.jetski|\.config|brain|conversations)(?:/.*)?|/(?:proc|etc)(?:/.*)?)$"
 )
 
 
@@ -166,7 +173,48 @@ def strip_redirects(clause: List[str]) -> Optional[Tuple[List[str], List[str]]]:
 
 
 def fenced(word: str) -> bool:
-  return bool(FENCED_PATH_RE.search(os.path.expanduser(word)))
+  expanded = os.path.expanduser(word)
+  return bool(FENCED_PATH_RE.search(expanded)) or bool(
+      FENCED_PATH_RE.search(word)
+  )
+
+
+def _is_sensitive_root(path: str) -> bool:
+  if SENSITIVE_ROOT_RE.match(path):
+    return True
+  return bool(SENSITIVE_ROOT_RE.match(os.path.expanduser(path)))
+
+
+def _is_recursive_grep(words: List[str]) -> bool:
+  if not words or words[0] not in ("grep", "egrep", "fgrep"):
+    return False
+  for w in words[1:]:
+    if w in ("-r", "-R", "--recursive", "--directories=recurse"):
+      return True
+    if w.startswith("-") and not w.startswith("--") and any(
+        c in "rR" for c in w[1:]
+    ):
+      return True
+  return False
+
+
+def _is_sensitive_walk(words: List[str]) -> bool:
+  if not words:
+    return False
+  prog = words[0]
+  if prog in ("find", "tree", "du"):
+    return any(
+        not w.startswith("-") and _is_sensitive_root(w) for w in words[1:]
+    )
+  if _is_recursive_grep(words):
+    return any(
+        not w.startswith("-") and _is_sensitive_root(w) for w in words[1:]
+    )
+  if prog == "rg":
+    operands = [w for w in words[1:] if not w.startswith("-")]
+    if len(operands) >= 2:
+      return any(_is_sensitive_root(w) for w in operands[1:])
+  return False
 
 
 def clause_read_only(clause: List[str]) -> bool:
@@ -175,6 +223,8 @@ def clause_read_only(clause: List[str]) -> bool:
     return False
   words, targets = parsed
   if any(fenced(w) for w in words + targets):
+    return False
+  if _is_sensitive_walk(words):
     return False
   return readonly_rules.clause_ok(words)
 

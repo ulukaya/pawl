@@ -40,7 +40,7 @@ run_command calls passed this kind of strict read-only check.
 | `readonly_pass.py` | Shell parsing, path fence, hook decision, approval log, CLI. |
 | `readonly_rules.py` | Trusted programs, writing flags, VCS allowlists. |
 | `readonly_pass_hook.py` | PreToolUse hook. |
-| `test_readonly_pass.py` | 183 tests: approve and prompt rows, hook shapes, off switch. |
+| `test_readonly_pass.py` | 201 tests: approve and prompt rows, hook shapes, off switch. |
 
 ## Run it
 
@@ -59,6 +59,6 @@ python3 readonly_pass.py check git log --oneline -5
 
 ## Limits
 
-Relative paths are not resolved against the call's working directory, globs
-are not expanded, and a recursive walk (`grep -r x ~`) that reaches a fenced
-directory is not caught. Those stay a follow-up.
+Relative paths are not resolved against the call's working directory. Globs
+and recursive walks targeting sensitive roots (~, /, conversation stores)
+are stopped and left to the prompt.

@@ -41,4 +41,4 @@ calls that ask to bypass the sandbox.
 cd ${PLUGIN_ROOT}/pieces/readonly-pass && python3 -B -m pytest -q .
 ```
 
-Expected: `183 passed`.
+Expected: `201 passed`.
