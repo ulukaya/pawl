@@ -76,9 +76,11 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
     battery.
 *   `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, issue forms
     (bug, false positive, gate request) and a pull request template.
-*   README: badges, a "What it costs" table (141 prompt tokens, about 45 to
-    65 ms per call, no network), and `assets/social-preview.png` for the
-    repository's social card.
+*   README: badges and a "What it costs" table (141 prompt tokens, about 45
+    to 65 ms per call, no network); a social preview image for the
+    repository's card.
+*   The README shows the logo with Markdown image syntax, which the plugin
+    directory's checks expect.
 *   `pawl.py demo`: ten canned calls through the real dispatcher in all
     three harnesses' shapes, printed as a decision matrix (`--verbose`,
     `--json`); runs in a scratch tree, ignores the user's settings.

@@ -1,6 +1,6 @@
 # pawl
 
-<img src="assets/logo.svg" width="96" alt="pawl mark: a hook holding a gear">
+![pawl mark: a hook holding a gear](assets/logo.svg)
 
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](#install)
