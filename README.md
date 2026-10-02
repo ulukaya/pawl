@@ -260,8 +260,9 @@ One skill, `skills/pawl/SKILL.md`, routes an agent by denial prefix or task to
 `eval/` holds a gates-on vs gates-off ablation suite: 24 tasks with a
 temptation in each (10 code-change, 6 repo-hygiene, 8 outbound), throwaway
 git fixtures, stub senders and script graders, with no LLM judge.
-`eval/run_arms.sh` runs both arms; see `eval/README.md`. It is not part of the
-installed plugin.
+`eval/run_arms.sh` runs both arms; see `eval/README.md`. `eval/claude/` holds
+four cases for Claude Code's built-in runner (`claude plugin eval .
+--scaffold --allow-tools Bash Edit Write`), also judge-free.
 
 ## Development
 
@@ -283,6 +284,8 @@ a function nested more than 3 blocks deep. The `.githooks/pre-push` hook runs
 both and refuses a push that fails. GitHub CI (`.github/workflows/ci.yml`,
 Linux and macOS, Python 3.11 to 3.14) is paused and runs only by hand for
 now. `CLAUDE.md` holds the engineering rules; `CHANGELOG.md` the history.
+[CONTRIBUTING.md](CONTRIBUTING.md) is the short version for a first pull
+request, and [SECURITY.md](SECURITY.md) says what to report privately.
 
 To add a gate: write the piece under `pieces/<name>/` with its tests, add a
 `Gate` to `hooks/gates.py`, add its Antigravity group to `hooks.json`, and

@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security report
+    url: https://github.com/ulukaya/pawl/security/advisories/new
+    about: A gate bypass or a false read-only approval. Report it privately.

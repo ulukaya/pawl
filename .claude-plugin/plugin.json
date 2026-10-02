@@ -47,5 +47,8 @@
       "description": "Comma-separated gate names: git, poll, loop, noop, zero-width, fence, reread, readonly, send, idle (or egress, prose, budget).",
       "default": ""
     }
+  },
+  "experimental": {
+    "evals": "eval/claude"
   }
 }

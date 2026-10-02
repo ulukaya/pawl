@@ -1,0 +1,29 @@
+name: Gate request
+description: A mistake agents keep making that a deterministic check could stop.
+labels: [gate-request]
+body:
+  - type: textarea
+    id: mistake
+    attributes:
+      label: The mistake
+      description: What the agent does, and what it costs when it does.
+    validations:
+      required: true
+  - type: textarea
+    id: calls
+    attributes:
+      label: Example calls
+      description: Tool calls or commands that show it, one per line.
+      render: shell
+    validations:
+      required: true
+  - type: dropdown
+    id: action
+    attributes:
+      label: What the gate should do
+      options: [ask the human, refuse with a reason, rewrite the input, approve without a prompt, block the turn from ending]
+  - type: textarea
+    id: false-positives
+    attributes:
+      label: Harmless calls that look alike
+      description: The near misses a gate must let through.

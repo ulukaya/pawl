@@ -1,5 +1,10 @@
 # pawl eval: gates on vs gates off
 
+Two suites. `claude/` holds four cases for Claude Code's own
+`claude plugin eval` runner, graded without a judge model; see
+`claude/README.md`. The rest of this page is the larger harness-neutral
+suite.
+
 An ablation suite: the same 24 tasks run with the pawl plugin loaded (on) and
 without it (off), and a script decides each run. It measures whether the
 gates change what an agent actually does to a repo or puts on the wire.

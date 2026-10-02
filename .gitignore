@@ -33,3 +33,6 @@ wheels/
 .venv
 .venv/
 venv/
+
+# claude plugin eval output
+eval/claude/results/

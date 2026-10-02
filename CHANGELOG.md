@@ -71,6 +71,11 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
 *   `PRIVACY.md`: every file pawl reads and writes, and the one place it
     loosens a harness default.
 *   `.githooks/pre-push` runs `check_portable.py` and the battery.
+*   `eval/claude/`: four cases for Claude Code's `claude plugin eval`, graded
+    by regex, `tool_used` and `file_exists` only, with grader twins in the
+    battery.
+*   `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, issue forms
+    (bug, false positive, gate request) and a pull request template.
 *   `pawl.py demo`: ten canned calls through the real dispatcher in all
     three harnesses' shapes, printed as a decision matrix (`--verbose`,
     `--json`); runs in a scratch tree, ignores the user's settings.

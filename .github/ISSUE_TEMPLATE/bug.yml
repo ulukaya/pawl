@@ -1,0 +1,35 @@
+name: Bug
+description: A crash, a wrong answer in some harness, a broken install.
+labels: [bug]
+body:
+  - type: dropdown
+    id: harness
+    attributes:
+      label: Harness
+      options: [Claude Code, Codex, Antigravity, more than one, installer]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: pawl version
+      description: From .claude-plugin/plugin.json, or the commit.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: >-
+        The payload or command, and the output of
+        `python3 hooks/pawl.py pre --harness <harness> < payload.json`
+        if you can capture it.
+      render: shell
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected

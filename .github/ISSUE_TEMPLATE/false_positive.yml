@@ -1,0 +1,37 @@
+name: False positive
+description: A gate asked, refused or blocked a call that was fine.
+labels: [false-positive]
+body:
+  - type: dropdown
+    id: harness
+    attributes:
+      label: Harness
+      options: [Claude Code, Codex, Antigravity, more than one]
+    validations:
+      required: true
+  - type: input
+    id: gate
+    attributes:
+      label: Gate
+      description: The prefix of the reason, such as [PAWL git] or [IDLE TASK].
+    validations:
+      required: true
+  - type: textarea
+    id: call
+    attributes:
+      label: The call
+      description: The command or tool input exactly as the agent sent it.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: reason
+    attributes:
+      label: What pawl said
+      description: The full reason text.
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it is safe
+    validations:
+      required: true
