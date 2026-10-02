@@ -3,10 +3,11 @@
 
 An invisible character in an edit target makes the match fail against a clean
 file, and the agent then rewrites a file that was already correct. This piece
-removes zero width space (U+200B), non-joiner (U+200C), joiner (U+200D), byte
-order mark (U+FEFF), word joiner (U+2060) and soft hyphen (U+00AD) from the
-content fields of write_to_file (CodeContent) and replace_file_content
-(TargetContent, ReplacementContent).
+removes zero width space (U+200B), non-joiner (U+200C), joiner (U+200D outside
+emoji sequences), byte order mark (U+FEFF), word joiner (U+2060) and soft
+hyphen (U+00AD) from content fields of write_to_file (CodeContent),
+replace_file_content (TargetContent, ReplacementContent) and
+multi_replace_file_content (ReplacementChunks).
 
 When something was stripped the hook answers with an overwrite block holding
 the full argument object, cleaned, so the write still lands:
@@ -39,6 +40,18 @@ WATCHDOG_ENV = "PAWL_ZERO_WIDTH_WATCHDOG_S"
 HOST_TIMEOUT_S = 15.0
 ALLOW = {"decision": "allow"}
 ZERO_WIDTH_PATTERN = re.compile(r"[\u200b-\u200d\ufeff\u2060\u00ad]")
+NON_ZWJ_ZERO_WIDTH = re.compile(r"[\u200b\u200c\ufeff\u2060\u00ad]")
+EMOJI_RANGE = (
+    r"[\U0001f000-\U0001faff"
+    r"\U00002600-\U000027bf"
+    r"\U00002300-\U000023ff"
+    r"\U00002b00-\U00002bff"
+    r"\U0000fe00-\U0000fe0f"
+    r"]"
+)
+ZWJ_EMOJI_PAIR = re.compile(f"(?<={EMOJI_RANGE})\u200d(?={EMOJI_RANGE})")
+_ZWJ_PROTECTED = "\x00_ZWJ_\x00"
+
 CONTENT_FIELDS = {
     "write_to_file": ("CodeContent",),
     "replace_file_content": ("TargetContent", "ReplacementContent"),
@@ -46,20 +59,70 @@ CONTENT_FIELDS = {
 
 
 def strip(text: str) -> str:
-  return ZERO_WIDTH_PATTERN.sub("", text)
+  text = NON_ZWJ_ZERO_WIDTH.sub("", text)
+  if "\u200d" not in text:
+    return text
+  text = ZWJ_EMOJI_PAIR.sub(_ZWJ_PROTECTED, text)
+  text = text.replace("\u200d", "")
+  return text.replace(_ZWJ_PROTECTED, "\u200d")
+
+
+def _clean_field(val: Any) -> Tuple[Any, bool]:
+  if isinstance(val, str) and ZERO_WIDTH_PATTERN.search(val):
+    cleaned = strip(val)
+    if cleaned != val:
+      return cleaned, True
+  return val, False
+
+
+def _clean_chunk(chunk: Any) -> Tuple[Any, bool]:
+  if not isinstance(chunk, dict):
+    return chunk, False
+  new_chunk = dict(chunk)
+  changed = False
+  for key in ("TargetContent", "ReplacementContent"):
+    val, c = _clean_field(new_chunk.get(key))
+    if c:
+      new_chunk[key] = val
+      changed = True
+  return new_chunk, changed
+
+
+def _sanitize_chunks(chunks: List[Any]) -> Tuple[List[Any], bool]:
+  new_chunks: List[Any] = []
+  changed = False
+  for chunk in chunks:
+    c_out, c_changed = _clean_chunk(chunk)
+    new_chunks.append(c_out)
+    if c_changed:
+      changed = True
+  return new_chunks, changed
 
 
 def sanitize(tool: str, args: Any) -> Optional[Dict[str, Any]]:
   """Cleaned copy of `args` when a content field changed, else None."""
+  if not isinstance(args, dict):
+    return None
+  if tool == "multi_replace_file_content":
+    raw_chunks = args.get("ReplacementChunks")
+    if not isinstance(raw_chunks, list):
+      return None
+    new_chunks, changed = _sanitize_chunks(raw_chunks)
+    if not changed:
+      return None
+    out = dict(args)
+    out["ReplacementChunks"] = new_chunks
+    return out
+
   fields = CONTENT_FIELDS.get(tool)
-  if not fields or not isinstance(args, dict):
+  if not fields:
     return None
   out = dict(args)
   changed = False
   for key in fields:
-    value = out.get(key)
-    if isinstance(value, str) and ZERO_WIDTH_PATTERN.search(value):
-      out[key] = strip(value)
+    val, c = _clean_field(out.get(key))
+    if c:
+      out[key] = val
       changed = True
   return out if changed else None
 

@@ -65,6 +65,12 @@ def test_visible_unicode_survives() -> None:
   assert zws.strip(text + "\u200b") == text
 
 
+def test_zwj_inside_emoji_sequence_survives() -> None:
+  emoji = "👩\u200d💻"
+  assert zws.strip(emoji) == emoji
+  assert zws.strip(f"hello\u200dworld {emoji}") == f"helloworld {emoji}"
+
+
 def test_pattern_is_a_raw_string_class() -> None:
   assert zws.ZERO_WIDTH_PATTERN.pattern.startswith("[\\u200b")
 
@@ -91,6 +97,33 @@ def test_replace_target_and_replacement_are_cleaned() -> None:
   assert out == dict(args, TargetContent="x = 1", ReplacementContent="x = 2")
   clean = dict(args, TargetContent="x = 1", ReplacementContent="x = 2")
   assert zws.sanitize("replace_file_content", clean) is None
+
+
+def test_multi_replace_chunks_are_cleaned() -> None:
+  args = {
+      "TargetFile": "/w/a.py",
+      "ReplacementChunks": [
+          {"TargetContent": "x\u200d = 1", "ReplacementContent": "x = 2\u00ad"},
+          {"TargetContent": "y = 3", "ReplacementContent": "\ufeffy = 4\u200b"},
+      ],
+  }
+  out = zws.sanitize("multi_replace_file_content", args)
+  assert out == {
+      "TargetFile": "/w/a.py",
+      "ReplacementChunks": [
+          {"TargetContent": "x = 1", "ReplacementContent": "x = 2"},
+          {"TargetContent": "y = 3", "ReplacementContent": "y = 4"},
+      ],
+  }
+  clean = {
+      "TargetFile": "/w/a.py",
+      "ReplacementChunks": [
+          {"TargetContent": "x = 1", "ReplacementContent": "x = 2"},
+          {"TargetContent": "y = 3", "ReplacementContent": "y = 4"},
+      ],
+  }
+  assert zws.sanitize("multi_replace_file_content", clean) is None
+
 
 
 def test_only_content_fields_are_touched() -> None:

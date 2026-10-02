@@ -6,12 +6,13 @@ CLI:
 python3 -B ${PLUGIN_ROOT}/pieces/zero-width-sanitizer/zero_width_sanitizer.py
 ```
 
-Hook: `hooks/pawl_zero_width_hook.py` on `write_to_file|replace_file_content`.
-Strips zero width space, non-joiner, joiner, byte order mark, word joiner and
-soft hyphen from `CodeContent`, `TargetContent` and `ReplacementContent`, and
-answers `{"decision": "allow", "overwrite": {...}}` with the full cleaned
-arguments so the write still lands. Paths and other fields are untouched.
-Never blocks; fails open.
+Hook: `hooks/pawl_zero_width_hook.py` on
+`write_to_file|replace_file_content|multi_replace_file_content`.
+Strips zero width space, non-joiner, joiner (outside emoji), byte order mark,
+word joiner and soft hyphen from `CodeContent`, `TargetContent` and
+`ReplacementContent`, and answers `{"decision": "allow", "overwrite": {...}}`
+with the full cleaned arguments so the write still lands. Paths and other
+fields are untouched. Never blocks; fails open.
 
 ## Commands
 
@@ -30,4 +31,4 @@ Never blocks; fails open.
 cd ${PLUGIN_ROOT}/pieces/zero-width-sanitizer && python3 -B -m pytest -q .
 ```
 
-Expected: `25 passed`.
+Expected: `27 passed`.

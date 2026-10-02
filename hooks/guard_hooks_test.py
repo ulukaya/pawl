@@ -29,7 +29,7 @@ GROUPS = {
         "pawl_noop_edit_hook.py",
     ),
     "pawl-zero-width-sanitizer": (
-        "write_to_file|replace_file_content",
+        "write_to_file|replace_file_content|multi_replace_file_content",
         "pawl_zero_width_hook.py",
     ),
     "pawl-conversation-fence": (".*", "pawl_fence_hook.py"),
