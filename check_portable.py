@@ -34,7 +34,19 @@ ROOT = Path(__file__).resolve().parent
 TEXT_SUFFIXES = frozenset(
     {".py", ".md", ".json", ".txt", ".toml", ".yaml", ".yml", ".sh", ".svg"}
 )
-SKIP_DIRS = frozenset({"__pycache__", ".git"})
+# Tooling that lives beside a checkout but never ships: the virtualenv
+# CLAUDE.md runs the battery from, and caches pytest and linters leave.
+SKIP_DIRS = frozenset({
+    "__pycache__",
+    ".git",
+    ".venv",
+    "venv",
+    ".tox",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "node_modules",
+})
 
 HOME_DIR_RE = re.compile(r"/(?:usr/local/google/)?home/[a-z]+/|/Users/[a-z]+/")
 FORBIDDEN_PATHS = frozenset({"agents", "mcp_config.json", "plugins.json"})
@@ -48,10 +60,15 @@ PLUGIN_JSON_FIELDS = frozenset({
 })
 
 
-def text_files():
-  for p in ROOT.rglob("*"):
-    if any(part in SKIP_DIRS for part in p.parts):
-      continue
+def tree(root: Path = ROOT, pattern: str = "*"):
+  """Paths under root matching pattern, sorted, tooling dirs skipped."""
+  for p in sorted(root.rglob(pattern)):
+    if not any(part in SKIP_DIRS for part in p.relative_to(root).parts):
+      yield p
+
+
+def text_files(root: Path = ROOT):
+  for p in tree(root):
     if (
         p.is_file()
         and p.suffix in TEXT_SUFFIXES
@@ -70,22 +87,22 @@ def is_test_module(p: Path) -> bool:
   )
 
 
-def check_home_dirs(errors: list[str]) -> None:
-  for p in text_files():
+def check_home_dirs(errors: list[str], root: Path = ROOT) -> None:
+  for p in text_files(root):
     if is_test_module(p):
       continue  # fixtures carry fake home paths to trigger the egress firewall
     for i, line in enumerate(p.read_text(errors="replace").splitlines(), 1):
       m = HOME_DIR_RE.search(line)
       if m:
         errors.append(
-            f"{p.relative_to(ROOT)}:{i}: absolute home dir {m.group(0)!r}"
+            f"{p.relative_to(root)}:{i}: absolute home dir {m.group(0)!r}"
         )
 
 
-def check_paths(errors: list[str]) -> None:
-  for p in ROOT.rglob("*"):
+def check_paths(errors: list[str], root: Path = ROOT) -> None:
+  for p in tree(root):
     if p.name in FORBIDDEN_PATHS:
-      errors.append(f"{p.relative_to(ROOT)}: must not ship")
+      errors.append(f"{p.relative_to(root)}: must not ship")
 
 
 def check_plugin_json(errors: list[str], root: Path = ROOT) -> None:
@@ -120,9 +137,7 @@ def check_hooks(errors: list[str], root: Path = ROOT) -> None:
 
 def check_line_endings(errors: list[str], root: Path = ROOT) -> None:
   """Fails on any CR byte in any text file under root, this file included."""
-  for p in sorted(root.rglob("*")):
-    if any(part in SKIP_DIRS for part in p.parts):
-      continue
+  for p in tree(root):
     if not (p.is_file() and p.suffix in TEXT_SUFFIXES):
       continue
     for i, line in enumerate(p.read_bytes().split(b"\n"), 1):
@@ -171,9 +186,7 @@ def check_markdown_width(errors: list[str], root: Path = ROOT) -> None:
     errors: list that receives one message per offending line.
     root: plugin root to scan.
   """
-  for p in sorted(root.rglob("*.md")):
-    if any(part in SKIP_DIRS for part in p.parts):
-      continue
+  for p in tree(root, "*.md"):
     lines = p.read_text(errors="replace").splitlines()
     in_front_matter = bool(lines) and lines[0] == "---"
     in_fence = False

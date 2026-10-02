@@ -66,6 +66,56 @@ class LineEndingsTest(unittest.TestCase):
     self.assertEqual(errors, [])
 
 
+class ToolingDirsTest(unittest.TestCase):
+  """Virtualenvs and tool caches are not part of the shipped tree."""
+
+  def _tree(self) -> Path:
+    d = Path(tempfile.mkdtemp(prefix="pawl_venv_"))
+    self.addCleanup(lambda: shutil.rmtree(d, ignore_errors=True))
+    files = {
+        ".venv/lib/site.py": b"HOME = '/home/someone/x'\r\n",
+        ".venv/lib/README.md": b"# t\n\n" + b"word " * 20 + b"\n",
+        "venv/agents/x.py": b"print(1)\n",
+        ".pytest_cache/README.md": b"# t\n\n" + b"word " * 20 + b"\n",
+        "node_modules/m/a.txt": b"x\r\n",
+        "README.md": b"# t\n",
+    }
+    for rel, data in files.items():
+      p = d / rel
+      p.parent.mkdir(parents=True, exist_ok=True)
+      p.write_bytes(data)
+    return d
+
+  def test_line_endings_skip_tooling_dirs(self):
+    errors: list[str] = []
+    check_portable.check_line_endings(errors, root=self._tree())
+    self.assertEqual(errors, [])
+
+  def test_markdown_width_skips_tooling_dirs(self):
+    errors: list[str] = []
+    check_portable.check_markdown_width(errors, root=self._tree())
+    self.assertEqual(errors, [])
+
+  def test_home_dirs_skip_tooling_dirs(self):
+    errors: list[str] = []
+    check_portable.check_home_dirs(errors, root=self._tree())
+    self.assertEqual(errors, [])
+
+  def test_forbidden_paths_skip_tooling_dirs(self):
+    errors: list[str] = []
+    check_portable.check_paths(errors, root=self._tree())
+    self.assertEqual(errors, [])
+
+  def test_home_dir_outside_tooling_dirs_still_fails(self):
+    root = self._tree()
+    (root / "notes.md").write_text("see /home/someone/notes\n")
+    errors: list[str] = []
+    check_portable.check_home_dirs(errors, root=root)
+    self.assertEqual(
+        errors, ["notes.md:1: absolute home dir '/home/someone/'"]
+    )
+
+
 class PluginJsonTest(unittest.TestCase):
   """check_plugin_json: field allowlist and logo file presence."""
 
