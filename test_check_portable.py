@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import pathlib
 import shutil
 import sys
@@ -171,6 +172,53 @@ class MarkdownWidthTest(unittest.TestCase):
     self.assertEqual(errors, [])
 
 
+class HooksJsonTest(unittest.TestCase):
+  """check_hooks: no absolute path in any hook command, Stop entries too."""
+
+  def _tree(self, hooks: dict) -> Path:
+    d = Path(tempfile.mkdtemp(prefix="pawl_hooks_"))
+    self.addCleanup(lambda: shutil.rmtree(d, ignore_errors=True))
+    (d / "hooks.json").write_text(json.dumps(hooks))
+    return d
+
+  def _pre(self, cmd: str) -> dict:
+    return {"PreToolUse": [{"matcher": ".*", "hooks": [
+        {"type": "command", "command": cmd}]}]}
+
+  def test_absolute_path_in_a_stop_entry_fails(self):
+    root = self._tree({
+        "g": {"Stop": [{"type": "command",
+                        "command": "python3 /opt/x/stop_hook.py"}]},
+    })
+    errors: list[str] = []
+    check_portable.check_hooks(errors, root=root)
+    self.assertEqual(
+        errors, ["hooks.json[g][Stop]: absolute path in"
+                 " 'python3 /opt/x/stop_hook.py'"]
+    )
+
+  def test_absolute_path_in_a_pre_tool_use_entry_fails(self):
+    root = self._tree({"g": self._pre("python3 /opt/x/hook.py")})
+    errors: list[str] = []
+    check_portable.check_hooks(errors, root=root)
+    self.assertEqual(len(errors), 1)
+
+  def test_relative_commands_pass(self):
+    root = self._tree({
+        "g": dict(self._pre("python3 -B hooks/a.py"),
+                  Stop=[{"type": "command",
+                         "command": "python3 -B hooks/b.py stop"}]),
+    })
+    errors: list[str] = []
+    check_portable.check_hooks(errors, root=root)
+    self.assertEqual(errors, [])
+
+  def test_live_hooks_json_is_clean(self):
+    errors: list[str] = []
+    check_portable.check_hooks(errors)
+    self.assertEqual(errors, [])
+
+
 class SkillEnvTest(unittest.TestCase):
   """check_skill_env: reference Environment vars must exist in piece source."""
 
@@ -280,6 +328,26 @@ class SkillEnvTest(unittest.TestCase):
     check_portable.check_skill_env(errors, root=root)
     self.assertEqual(len(errors), 1)
     self.assertIn("references/ghost.md", errors[0])
+
+  def test_missing_environment_section_fails(self):
+    """A reference with no `## Environment` heading is not silently skipped."""
+    knobs = self._skill("report", "- `NOT_CHECKED`: x.\n").replace(
+        "## Environment", "## Knobs (environment)"
+    )
+    root = self._tree({
+        "pieces/report/report.py": 'os.environ.get("PAWL_DATA")\n',
+        "skills/pawl/references/report.md": knobs,
+        "pieces/prose-gate/prose_gate.py": "pass\n",
+        "skills/pawl/references/prose-gate.md": self._skill(
+            "prose-gate", "- (none): flags only.\n"
+        ),
+    })
+    errors: list[str] = []
+    check_portable.check_skill_env(errors, root=root)
+    self.assertEqual(
+        errors,
+        ["skills/pawl/references/report.md: no `## Environment` section"],
+    )
 
   def test_live_tree_is_clean(self):
     """Every shipped reference names only vars its piece reads."""

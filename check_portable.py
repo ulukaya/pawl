@@ -10,16 +10,16 @@ Checked:
      mcp_config.json, plugins.json).
   3. plugin.json has only the fields the loader keeps, and its logo path
      resolves to a file inside the plugin.
-  4. Every hook command uses ${PLUGIN_ROOT} or a relative path, never an
-     absolute one.
+  4. Every hook command, PreToolUse and Stop alike, uses ${PLUGIN_ROOT} or a
+     relative path, never an absolute one.
   5. pieces/ import only the standard library.
   6. No CR byte in any text file; a line-ending presubmit
      presubmit rejects CRLF.
   7. No markdown prose line over 80 columns. Front matter, fenced code,
      table rows, HTML lines, lines carrying a URL and lines whose only wide
      token is one backtick span are exempt; MarkdownLinter flags the rest.
-  8. Every env var a skills/pawl/references/<x>.md Environment section
-     names appears in that piece's source under pieces/<x>/.
+  8. Every skills/pawl/references/<x>.md has an Environment section, and
+     every env var it names appears in that piece's source under pieces/<x>/.
 """
 
 from __future__ import annotations
@@ -98,19 +98,24 @@ def check_plugin_json(errors: list[str], root: Path = ROOT) -> None:
     errors.append(f"plugin.json: logo {logo!r} is not a file in the plugin")
 
 
-def check_hooks(errors: list[str]) -> None:
-  hooks = json.loads((ROOT / "hooks.json").read_text())
+def _hook_commands(entry: dict) -> list[str]:
+  """Commands of one hooks.json entry: nested under "hooks" (PreToolUse) or
+  carried directly (Stop)."""
+  nested = [h.get("command", "") for h in entry.get("hooks", [])]
+  return nested + ([entry["command"]] if "command" in entry else [])
+
+
+def check_hooks(errors: list[str], root: Path = ROOT) -> None:
+  hooks = json.loads((root / "hooks.json").read_text())
   for group, cfg in hooks.items():
     for event, entries in cfg.items():
       if not isinstance(entries, list):
         continue
-      for entry in entries:
-        for h in entry.get("hooks", []):
-          cmd = h.get("command", "")
-          if re.search(r"\s/(?!tmp/)", " " + cmd):
-            errors.append(
-                f"hooks.json[{group}][{event}]: absolute path in {cmd!r}"
-            )
+      for cmd in (c for e in entries for c in _hook_commands(e)):
+        if re.search(r"\s/(?!tmp/)", " " + cmd):
+          errors.append(
+              f"hooks.json[{group}][{event}]: absolute path in {cmd!r}"
+          )
 
 
 def check_line_endings(errors: list[str], root: Path = ROOT) -> None:
@@ -207,17 +212,17 @@ ENV_VAR_RE = re.compile(r"`([A-Z][A-Z0-9_]+)(?:=[^`]*)?`")
 HEADING_RE = re.compile(r"^#+\s")
 
 
-def _environment_section(text: str) -> list[str]:
-  """Returns the lines of the `## Environment` section, or an empty list."""
-  out: list[str] = []
-  in_env = False
+def _environment_section(text: str) -> list[str] | None:
+  """Lines of the `## Environment` section; None when there is no heading."""
+  out: list[str] | None = None
   for line in text.splitlines():
     if HEADING_RE.match(line):
-      if in_env:
+      if out is not None:
         break
-      in_env = line.strip().lower() == "## environment"
+      if line.strip().lower() == "## environment":
+        out = []
       continue
-    if in_env:
+    if out is not None:
       out.append(line)
   return out
 
@@ -245,9 +250,11 @@ def check_skill_env(errors: list[str], root: Path = ROOT) -> None:
     if not source:
       errors.append(f"{rel}: no piece source under {dirs}")
       continue
-    env_text = "\n".join(
-        _environment_section(skill.read_text(errors="replace"))
-    )
+    section = _environment_section(skill.read_text(errors="replace"))
+    if section is None:
+      errors.append(f"{rel}: no `## Environment` section")
+      continue
+    env_text = "\n".join(section)
     for var in sorted(set(ENV_VAR_RE.findall(env_text))):
       if var not in source:
         errors.append(f"{rel}: env var {var} not in {' '.join(dirs)}")
