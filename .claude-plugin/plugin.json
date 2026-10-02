@@ -1,14 +1,20 @@
 {
   "name": "pawl",
-  "version": "0.3.0",
-  "description": "Sixteen deterministic safety gates stopping message flooding, credential egress, bot slop, destructive git, poll loops, repeating tool oscillations, zero-width characters, and cross-conversation file snooping.",
+  "displayName": "pawl",
+  "version": "0.4.0",
+  "description": "Deterministic gates for coding agents: stops destructive git, unbounded waits, repeated tool calls, no-op edits, transcript re-reads, cross-conversation snooping and leaky or bot-sounding sends; strips zero-width characters; approves provably read-only shell commands. Plain Python, no model calls, no prompt cost.",
   "author": {
-    "name": "Ulukaya"
+    "name": "Ulukaya",
+    "url": "https://ulukaya.dev"
   },
+  "homepage": "https://github.com/ulukaya/pawl",
+  "repository": "https://github.com/ulukaya/pawl",
   "license": "Apache-2.0",
   "keywords": [
     "safety",
     "guardrails",
-    "lifecycle-hooks"
+    "hooks",
+    "git",
+    "deterministic"
   ]
 }
