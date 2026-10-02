@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Tests for background-task polls and ring resets in oscillation_breaker.
 
-Polls (an earlier change): intent fields and a growing view_file EndLine must not
+Polls: intent fields and a growing view_file EndLine must not
 make a repeat look new; manage_task status on one task counts.
-Resets (an earlier change, a reported false positive): a schedule call and the end of a turn
+Resets: a schedule call and the end of a turn
 clear the ring, so cron ticks never add up; an idle expiry is opt-in only, so
 a slow retry loop inside one turn still trips.
 
@@ -153,7 +153,7 @@ def test_schedule_call_resets_the_ring() -> None:
 
 
 def test_cron_ticks_in_separate_turns_never_trip() -> None:
-  """a reported false positive: one poll per cron wakeup, five wakeups."""
+  """One poll per cron wakeup, five wakeups: never a loop."""
   poll = tool_call("run_command", {"CommandLine": "python3 poll_presubmit.py"})
   for _ in range(5):
     assert run_hook(poll) == {"decision": "allow"}

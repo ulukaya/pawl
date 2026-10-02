@@ -13,8 +13,8 @@ Checked:
   4. Every hook command, PreToolUse and Stop alike, uses ${PLUGIN_ROOT} or a
      relative path, never an absolute one.
   5. pieces/ import only the standard library.
-  6. No CR byte in any text file; a line-ending presubmit
-     presubmit rejects CRLF.
+  6. No CR byte in any text file: CRLF line endings break diffs and the
+     shell scripts.
   7. No markdown prose line over 80 columns. Front matter, fenced code,
      table rows, HTML lines, lines carrying a URL and lines whose only wide
      token is one backtick span are exempt; MarkdownLinter flags the rest.

@@ -2,6 +2,7 @@
   "name": "pawl",
   "version": "0.4.0",
   "description": "Deterministic gates for coding agents: stops destructive git, unbounded waits, repeated tool calls, no-op edits, transcript re-reads, cross-conversation snooping and leaky or bot-sounding sends; strips zero-width characters; approves provably read-only shell commands. Plain Python, no model calls, no prompt cost.",
+  "license": "Apache-2.0",
   "keywords": [
     "safety",
     "guardrails",

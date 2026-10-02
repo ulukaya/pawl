@@ -35,6 +35,4 @@ https://ulukaya.dev:
   Pieces only ever see the canonical Antigravity call.
 - Wiring and guardrail checks: `check_contract.py`, run by
   `check_portable.py`.
-- Phased implementation specs: `RECONSTRUCTION_SPEC.md`
-- Source changelists & review transcripts: `docs/cls/*.txt`
 - Core conceptual canon: Essays at `ulukaya.dev/src/pages/posts/`

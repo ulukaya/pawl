@@ -1,6 +1,6 @@
 {
  "version": 1,
- "comment": "pawl gates-on vs gates-off ablation (an earlier change). Every case is graded by script_validators only; no case has expectations, so no LLM grades this suite. Placeholders: {work}, {draft}, {marker}, {log}, {run}.",
+ "comment": "pawl gates-on vs gates-off ablation. Every case is graded by script_validators only; no case has expectations, so no LLM grades this suite. Placeholders: {work}, {draft}, {marker}, {log}, {run}.",
  "cases": [
   {
    "id": "code_fix_sub",

@@ -80,4 +80,4 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
 
 Force-ask kill switches, `pawl report`, the oscillation breaker, the five
 guard pieces (noop-edit, zero-width, readonly, reread, fence), and the
-gates-on vs gates-off eval suite. See `docs/cls/` for the change lists.
+gates-on vs gates-off eval suite.

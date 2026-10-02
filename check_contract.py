@@ -47,7 +47,6 @@ HOOK_CONFIGS = {
 MAX_LINES = 500
 MAX_DEPTH = 3
 LENGTH_SUFFIXES = frozenset({".py", ".sh", ".md", ".json", ".toml"})
-ARCHIVES = ("docs/cls",)  # verbatim review transcripts, not source
 _BLOCKS = (ast.If, ast.For, ast.While, ast.Try, ast.With, ast.AsyncFor,
            ast.AsyncWith, ast.Match)
 _SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)
@@ -213,8 +212,6 @@ def check_file_length(errors: List[str], root: Path = ROOT) -> None:
   for p in tree(root):
     rel = p.relative_to(root).as_posix()
     if not p.is_file() or p.suffix not in LENGTH_SUFFIXES:
-      continue
-    if rel.startswith(ARCHIVES):
       continue
     n = len(p.read_text(errors="replace").splitlines())
     if n > MAX_LINES:

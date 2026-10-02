@@ -158,10 +158,9 @@ class ManifestTest(TreeCase):
 
 class GuardrailTest(TreeCase):
 
-  def test_file_over_500_lines_fails_and_archives_pass(self) -> None:
+  def test_file_over_500_lines_fails_and_tooling_dirs_pass(self) -> None:
     self.write("pieces/x/big.py", "x = 1\n" * 501)
     self.write("pieces/x/ok.py", "x = 1\n" * 500)
-    self.write("docs/cls/old_review.md", "line\n" * 900)
     self.write(".venv/lib/vendored.py", "x = 1\n" * 900)
     self.assertEqual(self.errors(cc.check_file_length),
                      ["pieces/x/big.py: 501 lines, over 500; split it"])
