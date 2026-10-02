@@ -8,7 +8,10 @@ EndLine: reading one file again from the same line is a repeat, paging forward
 moves StartLine and stays new. A view_file with only an EndLine keeps it.
 
 manage_task is exempt except a status check on one task (Action=status with a
-TaskId); list, kill and send_input stay exempt. Standard library only.
+TaskId); list, kill and send_input stay exempt. A read of a .log file, or of
+a .output file (where Claude Code writes a background task's output), is a
+poll too: the reason then says tasks report when they finish. Standard
+library only.
 """
 
 from __future__ import annotations
@@ -19,6 +22,7 @@ INTENT_FIELDS = frozenset({"toolSummary", "toolAction"})
 SCHEDULE_TOOL = "schedule"
 TASK_TOOL = "manage_task"
 VIEW_TOOL = "view_file"
+POLLED_SUFFIXES = (".log", ".output")
 
 # Calls that are legitimately repeated: waiting, messaging, asking.
 EXEMPT_TOOLS = frozenset({
@@ -54,7 +58,7 @@ def is_exempt(tool: str, args: Any) -> bool:
 
 
 def is_poll(tool: str, args: Any) -> bool:
-  """True for a task status check or a read of a .log file."""
+  """True for a task status check or a read of a task's log or output."""
   if is_task_status(tool, args):
     return True
   if tool not in (VIEW_TOOL, "Read", "read") or not isinstance(args, dict):
@@ -65,4 +69,4 @@ def is_poll(tool: str, args: Any) -> bool:
       or args.get("file_path")
       or ""
   )
-  return path.endswith(".log")
+  return path.endswith(POLLED_SUFFIXES)

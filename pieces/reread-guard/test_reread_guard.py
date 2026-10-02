@@ -299,3 +299,31 @@ def test_end_turn_without_state_or_conversation_allows(s: Session) -> None:
   assert rg.end_turn({"conversationId": "never-seen"}) == {"decision": "allow"}
   assert rg.end_turn({}) == {"decision": "allow"}
   assert rg.end_turn("not a dict") == {"decision": "allow"}  # type: ignore[arg-type]
+
+
+# --- transcripts named by the harness (Claude Code, Codex) --------------------
+
+
+@pytest.mark.parametrize("name", [
+    "0f3c9a1e-5b2d-4c8e-9f00-123456789abc.jsonl",  # Claude Code
+    "rollout-2026-10-02T09-00-00-0f3c9a1e.jsonl",  # Codex
+])
+def test_the_payload_transcript_counts_whatever_its_name(
+    s: Session, tmp_path: Path, name: str
+) -> None:
+  own = tmp_path / "proj" / name
+  own.parent.mkdir()
+  own.write_text("{}\n" * 50)
+  sibling = own.with_name("ffffffff-0000-0000-0000-000000000000.jsonl")
+  sibling.write_text("{}\n" * 50)
+  payload = lambda path: {  # noqa: E731
+      "conversationId": CONV, "turnId": "t1", "transcriptPath": str(own),
+      "toolCall": {"name": "view_file", "args": {"AbsolutePath": str(path)}},
+  }
+  for _ in range(15):
+    assert rg.decide(payload(sibling))["decision"] == "allow"
+  for _ in range(10):
+    assert rg.decide(payload(own))["decision"] == "allow"
+  out = rg.decide(payload(own))
+  assert out["decision"] == "deny"
+  assert f"own transcript ({name})" in out["reason"]

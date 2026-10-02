@@ -129,6 +129,15 @@ def test_poll_reason_says_background_tasks_notify() -> None:
   assert plain[2] and NOTIFY not in plain[2]
 
 
+def test_task_output_file_reads_are_polls() -> None:
+  out = "/tmp/claude-1000/proj/tasks/b7.output"
+  reads = calls("view_file", [{"AbsolutePath": out, "StartLine": 40}] * 3)
+  assert NOTIFY in reads[2]
+  ob.reset_ring(CONV)
+  other = calls("view_file", [{"AbsolutePath": "/w/output.txt"}] * 3)
+  assert other[2] and NOTIFY not in other[2]
+
+
 # --- schedule -----------------------------------------------------------------
 
 

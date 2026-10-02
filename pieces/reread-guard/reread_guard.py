@@ -7,7 +7,10 @@ the context and brings the next truncation closer. This piece counts two read
 shapes per conversation and user turn and denies past a limit ordinary turns
 never reach:
 
-  the 11th unbounded read of this conversation's own transcript*.jsonl;
+  the 11th unbounded read of this conversation's own transcript: a
+  transcript*.jsonl beside the payload's transcriptPath (Antigravity), or
+  the transcriptPath file itself whatever its name (Claude Code's
+  <session>.jsonl, Codex's rollout-*.jsonl);
   the 6th read of the same unchanged SKILL.md, or of the same memory file
   (MEMORY.md, GEMINI.md, AGENTS.md, CLAUDE.md, *.md under memory/) read
   from the top.
@@ -95,6 +98,13 @@ def _is_memory(path: str) -> bool:
   )
 
 
+def _is_payload_transcript(path: str, payload: Dict[str, Any]) -> bool:
+  tp = payload.get("transcriptPath")
+  if not isinstance(tp, str) or not tp:
+    return False
+  return os.path.realpath(path) == os.path.realpath(os.path.expanduser(tp))
+
+
 def counted(read: reread_shapes.Read, payload: Dict[str, Any], conv: str,
             cwd: str) -> Optional[Tuple[str, str, int]]:
   """(key, label, limit) when this read counts toward a limit, else None."""
@@ -102,6 +112,8 @@ def counted(read: reread_shapes.Read, payload: Dict[str, Any], conv: str,
     return None
   path = os.path.join(cwd, os.path.expanduser(read.path))
   name = os.path.basename(path)
+  if _is_payload_transcript(path, payload):
+    return "transcript", f"own transcript ({name})", TRANSCRIPT_LIMIT
   if TRANSCRIPT_RE.match(name):
     if not _own_transcript(path, payload, conv):
       return None
