@@ -19,6 +19,7 @@ SUITES = (
     + sorted(p for p in (ROOT / "pieces").iterdir() if p.is_dir())
     + [
         ROOT / "test_check_portable.py",
+        ROOT / "test_check_contract.py",
         ROOT / "test_install.py",
         ROOT / "eval" / "fixtures" / "test_validate.py",
     ]  # root tools and the grader twins: one file each, no recursion

@@ -20,6 +20,8 @@ Checked:
      token is one backtick span are exempt; MarkdownLinter flags the rest.
   8. Every skills/pawl/references/<x>.md has an Environment section, and
      every env var it names appears in that piece's source under pieces/<x>/.
+  9-12. The wiring contract in check_contract.py: every harness's hook
+     config, the plugin manifests, file length and nesting depth.
 """
 
 from __future__ import annotations
@@ -30,24 +32,13 @@ from pathlib import Path  # pylint: disable=g-importing-member
 import re
 import sys
 
+import check_contract
+from check_contract import SKIP_DIRS, tree  # noqa: F401  (tests use SKIP_DIRS)
+
 ROOT = Path(__file__).resolve().parent
 TEXT_SUFFIXES = frozenset(
     {".py", ".md", ".json", ".txt", ".toml", ".yaml", ".yml", ".sh", ".svg"}
 )
-# Tooling that lives beside a checkout but never ships: the virtualenv
-# CLAUDE.md runs the battery from, and caches pytest and linters leave.
-SKIP_DIRS = frozenset({
-    "__pycache__",
-    ".git",
-    ".venv",
-    "venv",
-    ".tox",
-    ".pytest_cache",
-    ".mypy_cache",
-    ".ruff_cache",
-    "node_modules",
-})
-
 HOME_DIR_RE = re.compile(r"/(?:usr/local/google/)?home/[a-z]+/|/Users/[a-z]+/")
 FORBIDDEN_PATHS = frozenset({"agents", "mcp_config.json", "plugins.json"})
 PLUGIN_JSON_FIELDS = frozenset({
@@ -58,13 +49,6 @@ PLUGIN_JSON_FIELDS = frozenset({
     "suggestedPrompts",
     "disabled",
 })
-
-
-def tree(root: Path = ROOT, pattern: str = "*"):
-  """Paths under root matching pattern, sorted, tooling dirs skipped."""
-  for p in sorted(root.rglob(pattern)):
-    if not any(part in SKIP_DIRS for part in p.relative_to(root).parts):
-      yield p
 
 
 def text_files(root: Path = ROOT):
@@ -81,15 +65,9 @@ def stdlib_names() -> set[str]:
   return set(sys.stdlib_module_names)
 
 
-def is_test_module(p: Path) -> bool:
-  return p.suffix == ".py" and (
-      p.name.startswith("test_") or p.name.endswith("_test.py")
-  )
-
-
 def check_home_dirs(errors: list[str], root: Path = ROOT) -> None:
   for p in text_files(root):
-    if is_test_module(p):
+    if check_contract.is_test(p):
       continue  # fixtures carry fake home paths to trigger the egress firewall
     for i, line in enumerate(p.read_text(errors="replace").splitlines(), 1):
       m = HOME_DIR_RE.search(line)
@@ -115,24 +93,13 @@ def check_plugin_json(errors: list[str], root: Path = ROOT) -> None:
     errors.append(f"plugin.json: logo {logo!r} is not a file in the plugin")
 
 
-def _hook_commands(entry: dict) -> list[str]:
-  """Commands of one hooks.json entry: nested under "hooks" (PreToolUse) or
-  carried directly (Stop)."""
-  nested = [h.get("command", "") for h in entry.get("hooks", [])]
-  return nested + ([entry["command"]] if "command" in entry else [])
-
-
 def check_hooks(errors: list[str], root: Path = ROOT) -> None:
   hooks = json.loads((root / "hooks.json").read_text())
   for group, cfg in hooks.items():
-    for event, entries in cfg.items():
-      if not isinstance(entries, list):
-        continue
-      for cmd in (c for e in entries for c in _hook_commands(e)):
-        if re.search(r"\s/(?!tmp/)", " " + cmd):
-          errors.append(
-              f"hooks.json[{group}][{event}]: absolute path in {cmd!r}"
-          )
+    commands = check_contract.config_commands({group: cfg}, "antigravity")
+    for event, cmd in commands:
+      if re.search(r"\s/(?!tmp/)", " " + cmd):
+        errors.append(f"hooks.json[{group}][{event}]: absolute path in {cmd!r}")
 
 
 def check_line_endings(errors: list[str], root: Path = ROOT) -> None:
@@ -145,22 +112,34 @@ def check_line_endings(errors: list[str], root: Path = ROOT) -> None:
         errors.append(f"non-unix line ending: {p.relative_to(root)}:{i}")
 
 
-def check_stdlib_only(errors: list[str]) -> None:
-  """Flags any import under pieces/ that is not in the stdlib."""
-  std = stdlib_names()
-  for p in (ROOT / "pieces").rglob("*.py"):
-    tree = ast.parse(p.read_text(), filename=str(p))
-    for node in ast.walk(tree):
-      names = []
-      if isinstance(node, ast.Import):
-        names = [a.name.split(".")[0] for a in node.names]
-      elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-        names = [node.module.split(".")[0]]
-      for n in names:
-        if n == "pytest" and p.name.startswith("test_"):
-          continue
-        if n not in std and not (p.parent / f"{n}.py").exists():
-          errors.append(f"{p.relative_to(ROOT)}: non-stdlib import {n!r}")
+def imported_roots(module: ast.AST) -> list[str]:
+  """Top-level package of every absolute import in a module."""
+  names: list[str] = []
+  for node in ast.walk(module):
+    if isinstance(node, ast.Import):
+      names += [a.name.split(".")[0] for a in node.names]
+    elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+      names.append(node.module.split(".")[0])
+  return names
+
+
+def check_stdlib_only(errors: list[str], root: Path = ROOT) -> None:
+  """Flags any import in shipped code that is not in the stdlib.
+
+  Covers pieces/ and hooks/; a test module may import pytest, and any
+  module may import another module shipped under pieces/ or hooks/.
+
+  Args:
+    errors: list that receives one message per foreign import.
+    root: plugin root to scan.
+  """
+  shipped = [*tree(root / "pieces", "*.py"), *tree(root / "hooks", "*.py")]
+  local = stdlib_names() | {p.stem for p in shipped}
+  for p in shipped:
+    allowed = local | ({"pytest"} if check_contract.is_test(p) else set())
+    names = imported_roots(ast.parse(p.read_text(), filename=str(p)))
+    for n in (n for n in names if n not in allowed):
+      errors.append(f"{p.relative_to(root)}: non-stdlib import {n!r}")
 
 
 MAX_MD_WIDTH = 80
@@ -284,6 +263,10 @@ def main() -> int:
       check_line_endings,
       check_markdown_width,
       check_skill_env,
+      check_contract.check_hook_configs,
+      check_contract.check_manifests,
+      check_contract.check_file_length,
+      check_contract.check_nesting,
   ):
     check(errors)
   for e in errors:
