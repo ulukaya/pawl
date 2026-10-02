@@ -91,19 +91,26 @@ READ_ONLY_SUBCOMMANDS = frozenset({
 GUARDED_SUBCOMMANDS = frozenset(
     {"reset", "checkout", "restore", "stash", "clean", "rm"}
 )
-_GLOBAL_VALUE_OPTS = frozenset({
-    "-C",
-    "-c",
-    "--git-dir",
-    "--work-tree",
-    "--namespace",
-    "--exec-path",
-    "--super-prefix",
-    "--config-env",
-})
-_SEPARATORS = (";", "&&", "||", "|", "\n")
-_PREFIX_CMDS = frozenset(
-    {"env", "sudo", "nohup", "command", "timeout", "nice", "time"}
+
+from commit_guard import unsafe_commit_reason
+from git_parse import (
+    ROOTS_ENV,
+    TOPLEVEL_TIMEOUT_S,
+    _GLOBAL_VALUE_OPTS,
+    _PREFIX_CMDS,
+    _SEPARATORS,
+    _effective_cwd,
+    _git_dir_to_root,
+    _git_index,
+    _inside,
+    _parse_git,
+    _resolve,
+    _short_flags,
+    _split_segments,
+    _targets_root,
+    _tokenize,
+    git_toplevel,
+    protected_roots,
 )
 
 REMEDY = (
@@ -113,215 +120,6 @@ REMEDY = (
     " the working tree and is immune to another process writing .git/index at"
     " the same time."
 )
-
-# --- commit rules (quote-aware regex scan) ------------------------------------
-_GIT_OPTS = r"\bgit\b(?:\s+-[cC]\s*\S+|\s+--[\w-]+(?:=\S+)?)*\s+commit\b"
-# `--no-verify[=..]` or any single-dash short-option cluster containing `n`
-# (`-n`, `-nm`, `-anm`, `-qn`). `(?!-)` keeps `--no-edit`/`--amend` out.
-_NO_VERIFY_RE = re.compile(
-    _GIT_OPTS
-    + r"[^;&|]*(?:--no-verify\b|(?:^|\s)-(?!-)[a-zA-Z]*n[a-zA-Z]*(?=\s|$))"
-)
-_QUOTE_RE = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
-_SEP_RE = re.compile(r";|&&|\|\|")
-_COMMIT_RE = re.compile(_GIT_OPTS)
-_TRUNC_PIPE_RE = re.compile(r"\|&?\s*\(?\s*[\"']?(?:tail|head)\b")
-_SUPPRESS_REDIR_RE = re.compile(r"(?:\d*>&?|&>)\s*/dev/null\b")
-_BARE_PIPE_CMDS = ("tail", "head")
-
-
-def _commit_segments(cmd: str) -> List[str]:
-  """Split on `;` / `&&` / `||` outside quotes, slicing the original text."""
-  masked = _QUOTE_RE.sub(lambda m: " " * len(m.group(0)), cmd)
-  segments, start = [], 0
-  for sep in _SEP_RE.finditer(masked):
-    segments.append(cmd[start : sep.start()])
-    start = sep.end()
-  segments.append(cmd[start:])
-  return segments
-
-
-def _strip_quotes(segment: str) -> str:
-  """Blanks quoted text so `-m "drop -n"` or `-m "a | tail"` cannot trip a rule.
-
-  A bare quoted `"tail"`/`"head"` stays visible. A quote wrapping its own
-  `git commit` (eval "...", "$(...)") collapses to a `git commit` marker so
-  the outer pipe check still sees a commit; its inner text is checked by
-  `_inner_commit_reason`.
-
-  Args:
-    segment: one pipeline segment of the command.
-
-  Returns:
-    The segment with quoted spans blanked or collapsed.
-  """
-
-  def blank(m: re.Match[str]) -> str:
-    inner = m.group(0)[1:-1]
-    if inner in _BARE_PIPE_CMDS:
-      return m.group(0)
-    return "git commit" if _COMMIT_RE.search(inner) else '""'
-
-  return _QUOTE_RE.sub(blank, segment)
-
-
-def _inner_commit_reason(segment: str) -> str:
-  for m in _QUOTE_RE.finditer(segment):
-    inner = m.group(0)[1:-1].replace('\\"', '"')
-    if _COMMIT_RE.search(inner):
-      reason = unsafe_commit_reason(inner)
-      if reason:
-        return reason
-  return ""
-
-
-def unsafe_commit_reason(cmd: str) -> str:
-  """Reason string if `cmd` bypasses or hides a commit gate, else ''."""
-  if not cmd:
-    return ""
-  for segment in _commit_segments(cmd):
-    stripped = _strip_quotes(segment)
-    if _NO_VERIFY_RE.search(stripped):
-      return (
-          "`git commit --no-verify` (or a short cluster carrying -n) skips the"
-          " pre-commit gate; fix what the gate reported instead."
-      )
-    if _COMMIT_RE.search(stripped) and _TRUNC_PIPE_RE.search(stripped):
-      return (
-          "`git commit` piped into tail/head hides the rejecting gate; use `>"
-          " /tmp/commit.log 2>&1; echo exit=$?; git log -1`."
-      )
-    if _COMMIT_RE.search(stripped) and _SUPPRESS_REDIR_RE.search(stripped):
-      return (
-          "`git commit` redirected to /dev/null discards the commit receipt;"
-          " use `git commit -F <file>` followed by `git log -1 --oneline`."
-      )
-    reason = _inner_commit_reason(segment)
-    if reason:
-      return reason
-  return ""
-
-
-# --- protected roots ----------------------------------------------------------
-
-
-def _resolve(path: str, cwd: str) -> str:
-  """Absolute realpath of `path` relative to `cwd`, with ~ expanded."""
-  expanded = os.path.expanduser(path)
-  if not os.path.isabs(expanded):
-    expanded = os.path.join(cwd, expanded)
-  return os.path.realpath(expanded)
-
-
-def _inside(resolved: str, root: str) -> bool:
-  return resolved == root or resolved.startswith(root + os.sep)
-
-
-def git_toplevel(cwd: str) -> str:
-  """Realpath of the repo containing `cwd`, or '' outside a git work tree."""
-  if not os.path.isdir(cwd):
-    return ""
-  try:
-    proc = subprocess.run(
-        ["git", "-C", cwd, "rev-parse", "--show-toplevel"],
-        capture_output=True,
-        text=True,
-        timeout=TOPLEVEL_TIMEOUT_S,
-        check=False,
-    )
-  except (OSError, subprocess.SubprocessError):
-    return ""
-  top = proc.stdout.strip()
-  return os.path.realpath(top) if proc.returncode == 0 and top else ""
-
-
-def protected_roots(cwd: str) -> List[str]:
-  """Realpaths this guard protects.
-
-  Args:
-    cwd: directory the command runs in.
-
-  Returns:
-    PAWL_GIT_PROTECTED_ROOTS when set, else the toplevel of `cwd`.
-  """
-  raw = os.environ.get(ROOTS_ENV)
-  if raw is not None:
-    return [_resolve(p, cwd) for p in raw.split(":") if p.strip()]
-  top = git_toplevel(cwd)
-  return [top] if top else []
-
-
-# --- git command scan ---------------------------------------------------------
-
-
-def _split_segments(command: str) -> List[str]:
-  segments = [command]
-  for sep in _SEPARATORS:
-    nxt: List[str] = []
-    for seg in segments:
-      nxt.extend(seg.split(sep))
-    segments = nxt
-  return segments
-
-
-def _tokenize(segment: str) -> List[str]:
-  try:
-    return shlex.split(segment)
-  except ValueError:
-    return segment.split()
-
-
-def _git_index(tokens: List[str]) -> int:
-  """Index of the `git` token, skipping common prefixes (env, sudo, timeout)."""
-  for i, tok in enumerate(tokens):
-    if os.path.basename(tok) == "git":
-      return i
-    if "=" in tok and not tok.startswith("-"):
-      continue
-    if tok in _PREFIX_CMDS:
-      continue
-    if tok.startswith("-") or tok.rstrip("smh").isdigit():
-      continue
-    return -1
-  return -1
-
-
-def _git_dir_to_root(path: str) -> str:
-  return os.path.dirname(path) if os.path.basename(path) == ".git" else path
-
-
-def _parse_git(
-    tokens: List[str], start: int, cwd: str
-) -> Tuple[Optional[str], List[str], Optional[str]]:
-  """Return (subcommand, remaining args, explicit target dir) for a git call."""
-  target: Optional[str] = None
-  i = start + 1
-  n = len(tokens)
-  while i < n:
-    tok = tokens[i]
-    if tok == "-C" and i + 1 < n:
-      target = _resolve(tokens[i + 1], target or cwd)
-      i += 2
-    elif tok.startswith("--git-dir=") or tok.startswith("--work-tree="):
-      target = _git_dir_to_root(_resolve(tok.split("=", 1)[1], cwd))
-      i += 1
-    elif tok in {"--git-dir", "--work-tree"} and i + 1 < n:
-      target = _git_dir_to_root(_resolve(tokens[i + 1], cwd))
-      i += 2
-    elif tok in _GLOBAL_VALUE_OPTS:
-      i += 2
-    elif tok.startswith("-"):
-      i += 1
-    else:
-      return tok, tokens[i + 1 :], target
-  return None, [], target
-
-
-def _short_flags(flags: List[str]) -> str:
-  """Letters from clustered short options: ['-fdx', '--force'] -> 'fdx'."""
-  return "".join(
-      f[1:] for f in flags if f.startswith("-") and not f.startswith("--")
-  )
 
 
 def destructive_reason(subcmd: str, args: List[str]) -> str:
@@ -364,26 +162,6 @@ def destructive_reason(subcmd: str, args: List[str]) -> str:
     return "`git rm` deletes tracked files and stages the deletion"
   return ""
 
-
-def _targets_root(
-    args: List[str], cwd: str, explicit: Optional[str], root: str
-) -> bool:
-  if explicit is not None:
-    return _inside(explicit, root)
-  if _inside(os.path.realpath(cwd), root):
-    return True
-  return any(
-      _inside(_resolve(a, cwd), root) for a in args if not a.startswith("-")
-  )
-
-
-def _effective_cwd(segments: List[str], up_to: int, cwd: str) -> str:
-  current = cwd
-  for seg in segments[:up_to]:
-    tokens = _tokenize(seg)
-    if len(tokens) == 2 and tokens[0] == "cd":
-      current = _resolve(tokens[1], current)
-  return current
 
 
 def scan(command: str, cwd: str, roots: Optional[List[str]] = None) -> str:
