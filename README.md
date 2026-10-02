@@ -2,11 +2,13 @@
 
 <img src="assets/logo.svg" width="96" alt="pawl mark: a hook holding a gear">
 
-Deterministic gates for coding agents, as one plugin for **Antigravity**,
-**Claude Code** and **OpenAI Codex**.
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](#install)
+[![Dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen)](CLAUDE.md)
+[![Claude Code, Codex, Antigravity](https://img.shields.io/badge/harnesses-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Antigravity-6f42c1)](#install)
 
-Questions or bugs: open an issue at https://github.com/ulukaya/pawl/issues
-or email ulukaya@gmail.com.
+Deterministic gates for coding agents, as one plugin for **Claude Code**,
+**OpenAI Codex** and **Antigravity**.
 
 Agents make the same mistakes over and over, and telling them not to in the
 prompt stops working after a page. `pawl` is sixteen small checks that run as
@@ -76,6 +78,15 @@ reason, `--json` every raw answer.
 The first twelve rows are hook gates that fire on their own; the last four
 are CLIs for pre-commit, CI and cron. Every piece also runs on its own: see
 `pieces/<name>/README.md`.
+
+## What it costs
+
+| | |
+| --- | --- |
+| Prompt | 141 tokens: the skill's description, the only always-on text |
+| Latency | about 45 ms per Read and 65 ms per Bash call (median, Linux, Python 3.11), all gates in one process |
+| Network | none: no telemetry, no model calls ([PRIVACY.md](PRIVACY.md)) |
+| Dependencies | the Python 3.11+ standard library |
 
 ## Install
 
@@ -291,3 +302,8 @@ To add a gate: write the piece under `pieces/<name>/` with its tests, add a
 `Gate` to `hooks/gates.py`, add its Antigravity group to `hooks.json`, and
 add `skills/pawl/references/<name>.md`; `check_portable.py` tells you what
 is missing.
+
+## Questions
+
+Open an issue at https://github.com/ulukaya/pawl/issues or email
+ulukaya@gmail.com. pawl is licensed under [Apache-2.0](LICENSE).
