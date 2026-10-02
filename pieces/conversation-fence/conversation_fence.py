@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 """conversation_fence.py: ask before a tool call reads another conversation.
 
-Jetski and Antigravity keep every conversation's transcript, artifacts and
-scratch files on local disk, so an agent in one conversation can read a
-sibling's private context with a plain view_file or shell read. This piece
-asks the user first when a tool call's arguments point at, under a store root:
+Antigravity, Claude Code and Codex all keep every conversation's
+transcript and scratch files on local disk, so an agent in one conversation
+can read a sibling's private context with a plain file or shell read. This
+piece asks the user first when a tool call's arguments point at another
+conversation's files, a sweep of every conversation, or an index of them all
+(stores.py lists each harness's layout):
 
-  brain/<id>/...                another conversation's brain directory;
-  conversations/<id>.*          another conversation's transcript;
-  brain/ or conversations/      a listing or sweep of every conversation;
-  conversation_summaries.db     every conversation's title and summary.
+  brain/<id>/, conversations/<id>.*, conversation_summaries.db   Antigravity
+  projects/<project>/<id>.jsonl and <id>/, file-history/<id>/,
+  history.jsonl                                                  Claude Code
+  sessions/**/rollout-*-<id>.jsonl, history.jsonl                Codex
 
-This conversation and its direct parent or child pass without a prompt. The
-lineage lookup opens conversation_summaries.db read-only (mode=ro, 0.5 s
-timeout) and reads only conversation_id and parent_conversation_id; a failed
-lookup counts as not lineage. Paths come from every string argument, and from
+This conversation passes, and on Antigravity so do its direct parent and
+child. The lineage lookup opens conversation_summaries.db read-only (mode=ro,
+0.5 s timeout) and reads only conversation_id and parent_conversation_id; a
+failed lookup counts as not lineage. Paths come from every string argument, and from
 every shell word (quotes removed, `~` expanded, `--flag=` values split,
 relative paths joined to the call's Cwd); symlinks are followed.
 
@@ -31,9 +33,12 @@ sandbox.
 
 Environment:
     PAWL_DATA                         log dir (default ~/.pawl)
-    PAWL_CONVERSATION_ROOTS           colon-separated store roots (default
-                                      ~/.gemini/antigravity, ~/.gemini/jetski,
-                                      ~/.antigravity, ~/.jetski)
+    PAWL_CONVERSATION_ROOTS           colon-separated Antigravity store roots
+                                      (default ~/.gemini/antigravity,
+                                      ~/.gemini/jetski, ~/.antigravity,
+                                      ~/.jetski)
+    CLAUDE_CONFIG_DIR                 Claude Code's store (default ~/.claude)
+    CODEX_HOME                        Codex's store (default ~/.codex)
     PAWL_CONVERSATION_FENCE_STRICT    1 turns the prompt into a deny
     PAWL_CONVERSATION_FENCE_OFF       1 turns the piece off
     PAWL_CONVERSATION_FENCE_WATCHDOG_S  watchdog seconds (default 14)
@@ -52,34 +57,25 @@ import signal
 import sqlite3
 import sys
 import time
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Tuple
 import urllib.parse
+
+import stores
 
 HOOK_NAME = "conversation_fence"
 GATE = "CONVERSATION_FENCE"
 PREFIX = "[PAWL fence]"
-ROOTS_ENV = "PAWL_CONVERSATION_ROOTS"
 STRICT_ENV = "PAWL_CONVERSATION_FENCE_STRICT"
 OFF_ENV = "PAWL_CONVERSATION_FENCE_OFF"
 WATCHDOG_ENV = "PAWL_CONVERSATION_FENCE_WATCHDOG_S"
 HOST_TIMEOUT_S = 15.0
 LOOKUP_TIMEOUT_S = 0.5
 ALLOW = {"decision": "allow"}
-DEFAULT_ROOTS = (
-    "~/.gemini/antigravity", "~/.gemini/jetski", "~/.antigravity", "~/.jetski",
-)
-SUMMARIES_DB = "conversation_summaries.db"
-STORES = ("brain", "conversations")
+SUMMARIES_DB = stores.SUMMARIES_DB
 SHELL_KEYS = frozenset({"CommandLine", "command"})
 
 
 # --- paths --------------------------------------------------------------------
-
-
-def roots() -> List[str]:
-  raw = os.environ.get(ROOTS_ENV)
-  items = raw.split(":") if raw is not None else list(DEFAULT_ROOTS)
-  return [os.path.expanduser(r.strip()) for r in items if r.strip()]
 
 
 def _strings(value: Any, key: str = "") -> Iterator[Tuple[str, str]]:
@@ -117,25 +113,6 @@ def candidates(args: Dict[str, Any]) -> List[str]:
   return out
 
 
-def _forms(path: str) -> List[str]:
-  return list({os.path.normpath(path), os.path.realpath(path)})
-
-
-def store_hit(path: str, root: str) -> Optional[Tuple[str, str]]:
-  """(what, conversation id or '') when `path` reaches into `root`'s stores."""
-  for p in _forms(path):
-    for r in _forms(root):
-      if p != r and not p.startswith(r.rstrip(os.sep) + os.sep):
-        continue
-      parts = Path(os.path.relpath(p, r)).parts
-      if parts and parts[0] == SUMMARIES_DB:
-        return "conversation summaries", ""
-      if parts and parts[0] in STORES:
-        conv = parts[1].split(".", 1)[0] if len(parts) > 1 else ""
-        return f"{parts[0]}/", conv
-  return None
-
-
 # --- lineage ------------------------------------------------------------------
 
 
@@ -169,24 +146,27 @@ def lineage(root: str, own: str, other: str) -> bool:
 # --- decision -----------------------------------------------------------------
 
 
+def _passes(hit: stores.Hit, own: str) -> bool:
+  if hit.conv == own:
+    return True
+  return bool(hit.conv) and hit.layout == "antigravity" and lineage(
+      hit.root, own, hit.conv)
+
+
 def fence_reason(tool: str, args: Dict[str, Any], own: str) -> str:
   """Reason when the call reads outside this conversation's lineage."""
   for path in candidates(args):
-    for root in roots():
-      hit = store_hit(path, root)
-      if hit is None:
-        continue
-      what, conv = hit
-      if conv == own or (conv and lineage(root, own, conv)):
-        continue
-      whose = f"conversation {conv}'s {what}" if conv else f"all of {what}"
-      if what == "conversation summaries":
-        whose = "every conversation's title and summary"
-      return (
-          f"{PREFIX} {tool} reads {whose}, outside this conversation and its"
-          " parent or child. Each conversation's context stays its own unless"
-          " the user says otherwise; approve only if the user asked for it."
-      )
+    hit = next((h for h in stores.hits(path) if not _passes(h, own)), None)
+    if hit is None:
+      continue
+    whose = hit.index or f"all of {hit.what}"
+    if hit.conv:
+      whose = f"conversation {hit.conv}'s {hit.what}"
+    return (
+        f"{PREFIX} {tool} reads {whose}, outside this conversation and its"
+        " parent or child. Each conversation's context stays its own unless"
+        " the user says otherwise; approve only if the user asked for it."
+    )
   return ""
 
 

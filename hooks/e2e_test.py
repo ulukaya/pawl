@@ -185,6 +185,16 @@ class ClaudeCodeTest(HarnessCase):
     self.assertEqual(spec["permissionDecision"], "deny")
     self.assertIn("[PAWL egress]", spec["permissionDecisionReason"])
 
+  def test_reading_another_sessions_transcript_asks(self) -> None:
+    cfg = self.tmp / "claude-config"
+    self.env["CLAUDE_CONFIG_DIR"] = str(cfg)
+    project = cfg / "projects" / "-work"
+    spec = self.pre("Read", {"file_path": str(project / "other-session.jsonl")})
+    self.assertEqual(spec["permissionDecision"], "ask")
+    self.assertIn("[PAWL fence]", spec["permissionDecisionReason"])
+    self.assertIsNone(self.pre("Read", {
+        "file_path": str(project / "claude-e2e" / "tool-results" / "r.txt")}))
+
   def test_disable_env_turns_a_gate_off(self) -> None:
     self.env["PAWL_DISABLE"] = "git"
     self.assertIsNone(self.pre("Bash", {"command": "git reset --hard"}))
