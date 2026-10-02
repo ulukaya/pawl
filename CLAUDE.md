@@ -30,6 +30,11 @@ https://ulukaya.dev:
    every phase. Embed suite and test pass counts directly in commit messages.
 
 ## 3. Working Reference
+- Hook layer: `hooks/pawl.py` (dispatcher), `hooks/harness.py` (Antigravity,
+  Claude Code and Codex payloads and answers), `hooks/gates.py` (registry).
+  Pieces only ever see the canonical Antigravity call.
+- Wiring and guardrail checks: `check_contract.py`, run by
+  `check_portable.py`.
 - Phased implementation specs: `RECONSTRUCTION_SPEC.md`
 - Source changelists & review transcripts: `docs/cls/*.txt`
 - Core conceptual canon: Essays at `ulukaya.dev/src/pages/posts/`

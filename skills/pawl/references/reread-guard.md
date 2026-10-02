@@ -1,12 +1,13 @@
 # pawl-reread-guard
 
-Hook: `hooks/pawl_reread_hook.py` on
-`view_file|run_command|run_shell_command`. Counts per conversation and user
-turn, and denies the 11th unbounded read of this conversation's own
-`transcript*.jsonl`, or the 6th read of the same unchanged `SKILL.md` or
-memory file (`MEMORY.md`, `GEMINI.md`, `AGENTS.md`, `CLAUDE.md`, `*.md` under
-`memory/`) read from the top. After three denials in one turn it allows
-everything until the next turn. Fails open.
+Gate `reread` of `hooks/pawl.py`, on file reads and shell commands. Counts
+per conversation and turn, and denies the 11th unbounded read of this
+conversation's own transcript (the harness's transcript path, or a
+`transcript*.jsonl` beside it), or the 6th read of the same unchanged
+`SKILL.md` or memory file (`MEMORY.md`, `GEMINI.md`, `AGENTS.md`,
+`CLAUDE.md`, `*.md` under `memory/`) read from the top. Counts reset at
+turn end. After three denials in one turn it allows everything until the
+next turn. Fails open.
 
 Bounded reads never count: `view_file` under 10 lines, `head`/`tail` at most
 10 lines or 20000 bytes, `sed -n` over at most 10 lines, `wc`, `rg -c`,
@@ -19,7 +20,7 @@ answer from what you already have, and name any fact that is still missing.
 
 | Invocation | Effect |
 |---|---|
-| (hook only) | `reread_guard_hook.py` reads one payload on stdin |
+| (hook only) | `reread_guard_hook.py` reads one Antigravity payload |
 
 ## Environment
 
@@ -31,7 +32,7 @@ answer from what you already have, and name any fact that is still missing.
 ## Test
 
 ```bash
-cd ${PLUGIN_ROOT}/pieces/reread-guard && python3 -B -m pytest -q .
+cd <root>/pieces/reread-guard && python3 -B -m pytest -q .
 ```
 
-Expected: `19 passed`.
+Expected: every test passes.

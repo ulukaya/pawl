@@ -1,13 +1,13 @@
 ---
 name: pawl
-description: "Deterministic gates for agent harnesses. Use when a tool call is denied, prompted or blocked with [PAWL egress], [PAWL prose], [PAWL budget], [PAWL git], [PAWL poll], [PAWL loop], [PAWL no-op], [PAWL reread], [PAWL fence] or [IDLE TASK], or before sending a message, discarding work with git, waiting on a background task, fixing a bug with a reproducer, running a scheduled job, or growing an always-loaded prompt file. Routes to 17 stdlib Python pieces; read references/<piece>.md for flags, knobs and how to recover from a deny."
+description: "Deterministic gates for agent harnesses. Use when a call is denied, prompted or blocked with a [PAWL egress|prose|budget|git|poll|loop|no-op|reread|fence] or [IDLE TASK] reason, or before sending a message, discarding git work, waiting on a background task, fixing a bug with a reproducer, or growing an always-loaded prompt file."
 ---
 
 # pawl
 
-Plugin root: `${PLUGIN_ROOT}` (local install `~/.gemini/config/plugins/pawl`).
-Pieces under `pieces/<name>/`. State under `PAWL_DATA` (default `~/.pawl`; send
-budget, egress rules and gate events share it).
+`<root>` is the plugin root, two directories above this file. Pieces live
+under `<root>/pieces/<name>/`; every hook runs `<root>/hooks/pawl.py`. State
+lives under `PAWL_DATA` (default `~/.pawl`).
 
 ## Denial prefixes
 
@@ -22,35 +22,34 @@ budget, egress rules and gate events share it).
 
 ## Routing
 
-Piece CLIs live under `pieces/<piece>/`; hooks under the plugin root. Each
-arrow names the page to read under `references/` in this skill directory.
+Each arrow names the page to read under `references/` beside this file.
 
--   Send: chat, mail, social post: `hooks/pawl_hook.py`: egress, prose, budget
-    in order -> `send-gates.md`
--   Destructive `git` in a protected repo, or `git commit -n`:
-    `hooks/pawl_git_hook.py` prompts; hand: `destructive_git_guard.py check` ->
+-   Send (chat, mail, social post): gate `send`, egress then prose then
+    budget -> `send-gates.md`
+-   Destructive `git` in a protected repo, `git commit -n`, a worktree on
+    tmpfs: gate `git` asks; by hand `destructive_git_guard.py check` ->
     `destructive-git-guard.md`
--   Poll loop, `tail -f`, `watch`, `sleep` over 600 s: `hooks/pawl_poll_hook.py`
-    prompts; hand: `poll_loop_guard.py classify` -> `poll-loop-guard.md`
--   Turn end with tasks older than 10 min: `hooks/pawl_stop_hook.py` blocks
-    once, then kills wait shapes -> `idle-task-gate.md`
--   Same tool call 3 times (task status polls too), or 2-3 calls alternating:
-    `hooks/pawl_oscillation_hook.py` prompts -> `oscillation-breaker.md`
--   Edit whose replacement equals its target: `hooks/pawl_noop_edit_hook.py`
-    denies -> `noop-edit-guard.md`
--   Invisible characters in a write: `hooks/pawl_zero_width_hook.py` strips
-    them, never blocks -> `zero-width-sanitizer.md`
--   Read-only shell command: `hooks/pawl_readonly_hook.py` auto-approves; hand:
+-   Poll loop, `tail -f`, `watch`, `sleep` over 600 s: gate `poll` asks; by
+    hand `poll_loop_guard.py classify` -> `poll-loop-guard.md`
+-   Turn end with background waits still running: gate `idle` blocks once ->
+    `idle-task-gate.md`
+-   Same tool call 3 times, or 2-3 calls alternating: gate `loop` asks ->
+    `oscillation-breaker.md`
+-   Edit whose replacement equals its target: gate `noop` denies ->
+    `noop-edit-guard.md`
+-   Invisible characters in a write: gate `zero-width` strips them ->
+    `zero-width-sanitizer.md`
+-   Read-only shell command: gate `readonly` approves; by hand
     `readonly_pass.py check` -> `readonly-pass.md`
--   Re-reading own transcript, a `SKILL.md` or a memory file:
-    `hooks/pawl_reread_hook.py` denies past the limit -> `reread-guard.md`
--   Reading another conversation's `brain/` or transcript:
-    `hooks/pawl_fence_hook.py` prompts -> `conversation-fence.md`
+-   Re-reading the own transcript, a `SKILL.md` or a memory file: gate
+    `reread` denies past the limit -> `reread-guard.md`
+-   Reading another conversation's files: gate `fence` asks ->
+    `conversation-fence.md`
 -   Which gates fired this week: `report.py --days 7` -> `report.md`
 -   Text a human will read: `prose_gate.py --plane chat|deliverable` ->
     `prose-gate.md`
--   Outbound text with paths, tokens, hostnames: `egress_firewall.py check` ->
-    `egress-firewall.md`
+-   Outbound text with paths, tokens, hostnames: `egress_firewall.py check`
+    -> `egress-firewall.md`
 -   Sends per channel per day: `send_budget.py status|check|spend` ->
     `send-budget.md`
 -   A count that may only go down: `ratchet.py check|update|show` ->
@@ -64,30 +63,23 @@ arrow names the page to read under `references/` in this skill directory.
 
 ## Contracts
 
--   Exit 0 pass, 1 fail, 2 internal error (piece READMEs list extras: breaker
-    3 = skipped).
--   Hook decision JSON on stdout only: `{"decision":"allow"}`,
-    `{"decision":"deny","reason":"..."}` or
-    `{"decision":"force_ask","reason":"..."}`; the Stop hook uses `"block"`.
--   Egress firewall fails closed. Prose gate, send budget, idle task gate,
-    oscillation breaker, no-op edit guard, zero-width sanitizer, read-only
-    pass, reread guard and conversation fence fail open.
--   Disable a send gate for one session: `PAWL_DISABLE=egress,prose,budget` (any
-    subset).
--   Read-only pass answers `auto_approve` or `allow`, never deny; the
-    zero-width sanitizer answers `allow` with an `overwrite` block.
--   Git guard, poll guard, oscillation breaker and conversation fence return
-    force_ask at a hit;
-    only a human click passes. `SEND_BUDGET_OVERRIDE=1` stays for hand runs of
-    the send-budget CLI.
+-   CLIs exit 0 pass, 1 fail, 2 internal error or missing input (piece pages
+    list extras: breaker 3 = skipped).
+-   A gate that asks: Antigravity `force_ask`, Claude Code `ask`. Codex
+    hooks cannot ask, so there it denies with the same reason; tell the user.
+-   The egress firewall, git and poll guards fail closed; every other gate
+    fails open.
+-   Skip gates for a session: `PAWL_DISABLE=git,poll,send,...` (any gate
+    name, or `egress`, `prose`, `budget`); `<root>/hooks/pawl.py gates` lists
+    them.
 -   Never edit a piece to make a gate pass. Fix the draft, command, count, or
     reason.
 
 ## Verify
 
 ```bash
-python3 -B ${PLUGIN_ROOT}/run_tests.py
-python3 -B ${PLUGIN_ROOT}/check_portable.py
+python3 -B <root>/run_tests.py
+python3 -B <root>/check_portable.py
 ```
 
-Expected: 20 lines starting `OK`, then `portable: clean`, exit 0.
+Expected: one `OK` line per suite, then `portable: clean`, exit 0.

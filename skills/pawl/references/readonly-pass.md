@@ -3,11 +3,12 @@
 CLI:
 
 ```
-python3 -B ${PLUGIN_ROOT}/pieces/readonly-pass/readonly_pass.py
+python3 -B <root>/pieces/readonly-pass/readonly_pass.py
 ```
 
-Hook: `hooks/pawl_readonly_hook.py` on `run_command|run_shell_command`.
-Answers `auto_approve` when every clause only reads: `ls`, `cat`, `head`,
+Gate `readonly` of `hooks/pawl.py`, on shell commands. Answers
+`auto_approve` (Claude Code: `permissionDecision: allow`; Codex hooks cannot
+approve, so nothing) when every clause only reads: `ls`, `cat`, `head`,
 `tail`, `wc`, `grep`, `rg`, `find` without `-exec`/`-delete`,
 `sed -n '<N>,<M>p'`, `sort`, `uniq`, `tree`, `file`, `echo`, `cd`, and the
 read-only subcommands of `git`, `hg`, `jj` and `g4`. Anything unprovable gets
@@ -38,7 +39,7 @@ calls that ask to bypass the sandbox.
 ## Test
 
 ```bash
-cd ${PLUGIN_ROOT}/pieces/readonly-pass && python3 -B -m pytest -q .
+cd <root>/pieces/readonly-pass && python3 -B -m pytest -q .
 ```
 
-Expected: `201 passed`.
+Expected: every test passes.

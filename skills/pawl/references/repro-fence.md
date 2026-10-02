@@ -3,7 +3,7 @@
 CLI:
 
 ```
-python3 -B ${PLUGIN_ROOT}/pieces/repro-fence/repro_fence.py
+python3 -B <root>/pieces/repro-fence/repro_fence.py
 ```
 
 ## Commands
@@ -21,7 +21,7 @@ python3 -B ${PLUGIN_ROOT}/pieces/repro-fence/repro_fence.py
 ## Test
 
 ```bash
-cd ${PLUGIN_ROOT}/pieces/repro-fence && python3 -B -m pytest -q test_repro_fence.py
+cd <root>/pieces/repro-fence && python3 -B -m pytest -q test_repro_fence.py
 ```
 
-Expected: `26 passed`.
+Expected: every test passes.

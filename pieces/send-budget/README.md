@@ -42,6 +42,14 @@ python3 send_budget.py check --channel email
 
 `spend` and `check` exit 0 when allowed and 3 when denied.
 
+## In the pawl plugin
+
+You do not wire this piece yourself there: gate `send` of `hooks/pawl.py`
+(`hooks/send_gates.py`) spends one unit per send, after the egress firewall and
+the prose gate, in Antigravity, Claude Code and Codex. `PAWL_DISABLE=budget`
+skips it for a session, `PAWL_DISABLE=send` all three. The rest of this page is
+for running the piece on its own.
+
 ## Wire it as a hook
 
 Jetski and Antigravity read `hooks.json`. Add a group like this (adjust the

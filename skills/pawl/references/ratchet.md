@@ -3,7 +3,7 @@
 CLI:
 
 ```
-python3 -B ${PLUGIN_ROOT}/pieces/ratchet-baseline/ratchet.py
+python3 -B <root>/pieces/ratchet-baseline/ratchet.py
 ```
 
 ## Commands
@@ -21,7 +21,7 @@ python3 -B ${PLUGIN_ROOT}/pieces/ratchet-baseline/ratchet.py
 ## Test
 
 ```bash
-cd ${PLUGIN_ROOT}/pieces/ratchet-baseline && python3 -B -m pytest -q test_ratchet.py
+cd <root>/pieces/ratchet-baseline && python3 -B -m pytest -q test_ratchet.py
 ```
 
-Expected: `14 passed`.
+Expected: every test passes.

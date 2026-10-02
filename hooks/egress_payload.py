@@ -1,6 +1,6 @@
 """egress_payload.py: the text a send-shaped command puts on the wire.
 
-The egress gate in pawl_hook.py scans only this text. Tool paths, redirects
+The egress gate in send_gates.py scans only this text. Tool paths, redirects
 (`2>&1 | tail`) and the paths of files a message is read from never leave the
 machine, so scanning them only produced false positives.
 

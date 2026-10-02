@@ -50,6 +50,14 @@ python3 poll_loop_guard.py check sleep 9999
 `classify` prints the label or `none` and exits 0. `check` exits 0 when bounded
 and 1 with the deny reason when not.
 
+## In the pawl plugin
+
+You do not wire this piece yourself there: `hooks/pawl.py` runs it as gate
+`poll` in Antigravity, Claude Code and Codex, and `hooks/harness.py`
+translates each harness's payload and answer, so the piece only ever sees
+the Antigravity shape below. `PAWL_DISABLE=poll` turns it off for a
+session. The rest of this page is for running the piece on its own.
+
 ## Wire it as a hook
 
 Jetski and Antigravity read `hooks.json`. Add a group like this (adjust the

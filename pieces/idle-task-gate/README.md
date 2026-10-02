@@ -59,6 +59,14 @@ python3 idle_task_gate.py classify tail -f build.log
 `list` prints one JSON row per stale root (`pid`, `pgid`, `age`, `cmd`).
 `classify` prints `LOOP`, `TAIL`, `SLEEP` or `none`.
 
+## In the pawl plugin
+
+You do not wire this piece yourself there: `hooks/pawl.py` runs it as gate
+`idle` in Antigravity, Claude Code and Codex, and `hooks/harness.py`
+translates each harness's payload and answer, so the piece only ever sees
+the Antigravity shape below. `PAWL_DISABLE=idle` turns it off for a
+session. The rest of this page is for running the piece on its own.
+
 ## Wire it as a hook
 
 Jetski and Antigravity read `hooks.json`. The Stop event takes a flat list

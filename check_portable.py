@@ -189,7 +189,7 @@ def check_markdown_width(errors: list[str], root: Path = ROOT) -> None:
 
 
 # References whose name does not match their pieces/ directory. send-gates.md
-# documents hooks/pawl_hook.py, which fronts three pieces, so it is checked
+# documents hooks/send_gates.py, which fronts three pieces, so it is checked
 # against the hook plus those pieces.
 SKILL_PIECE_DIRS = {
     "ratchet": ("pieces/ratchet-baseline",),

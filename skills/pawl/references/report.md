@@ -3,7 +3,7 @@
 CLI:
 
 ```
-python3 -B ${PLUGIN_ROOT}/pieces/report/report.py
+python3 -B <root>/pieces/report/report.py
 ```
 
 ## Commands
@@ -20,7 +20,7 @@ Invocation     | Effect
 ## Test
 
 ```bash
-cd ${PLUGIN_ROOT}/pieces/report && python3 -B -m pytest -q test_report.py
+cd <root>/pieces/report && python3 -B -m pytest -q test_report.py
 ```
 
-Expected: `8 passed`.
+Expected: every test passes.

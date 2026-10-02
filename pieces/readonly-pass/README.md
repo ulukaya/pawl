@@ -49,6 +49,14 @@ python3 -m pytest -q .
 python3 readonly_pass.py check git log --oneline -5
 ```
 
+## In the pawl plugin
+
+You do not wire this piece yourself there: `hooks/pawl.py` runs it as gate
+`readonly` in Antigravity, Claude Code and Codex, and `hooks/harness.py`
+translates each harness's payload and answer, so the piece only ever sees
+the Antigravity shape below. `PAWL_DISABLE=readonly` turns it off for a
+session. The rest of this page is for running the piece on its own.
+
 ## Configuration
 
 | Variable | Meaning | Default |

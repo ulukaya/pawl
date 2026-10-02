@@ -3,7 +3,7 @@
 CLI:
 
 ```
-python3 -B ${PLUGIN_ROOT}/pieces/egress-firewall/egress_firewall.py
+python3 -B <root>/pieces/egress-firewall/egress_firewall.py
 ```
 
 ## Commands
@@ -22,7 +22,7 @@ python3 -B ${PLUGIN_ROOT}/pieces/egress-firewall/egress_firewall.py
 ## Test
 
 ```bash
-cd ${PLUGIN_ROOT}/pieces/egress-firewall && python3 -B -m pytest -q test_egress_firewall.py
+cd <root>/pieces/egress-firewall && python3 -B -m pytest -q test_egress_firewall.py
 ```
 
-Expected: `16 passed`.
+Expected: every test passes.

@@ -46,7 +46,8 @@ fi
 
 STAGE="$OUT/stage/pawl"
 mkdir -p "$STAGE"
-tar -C "$ROOT" --exclude=./eval --exclude=./.git --exclude='__pycache__' \
+tar -C "$ROOT" --exclude=./eval --exclude=./.git --exclude=./.venv \
+  --exclude=./venv --exclude='__pycache__' --exclude='.pytest_cache' \
   -cf - . | tar -C "$STAGE" -xf -
 
 CASES="${PAWL_EVAL_CASES:-$(python3 -B -c '

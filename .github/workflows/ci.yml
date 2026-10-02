@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: ${{ matrix.os }} / Python ${{ matrix.python }}
@@ -15,7 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python: ["3.11", "3.12", "3.13"]
+        python: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,7 +28,22 @@ jobs:
       # The plugin is stdlib-only; the test battery runs under pytest.
       - name: Install the test runner
         run: python3 -m pip install pytest
-      - name: Portability gate
+      - name: Portability and wiring gate
         run: python3 -B check_portable.py
       - name: Test battery
         run: python3 -B run_tests.py
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      # Dev-only tool: pyflakes and bugbear rules catch dead imports,
+      # redefinitions and unused names; the shipped code stays stdlib-only.
+      - name: Install ruff
+        run: python3 -m pip install ruff
+      - name: Ruff
+        run: ruff check --select F,E9,B --output-format github .

@@ -76,6 +76,14 @@ python3 oscillation_breaker.py reset my-conv
 `check` records one call and exits 0 when clear, 1 on a repeat with the reason
 on stdout.
 
+## In the pawl plugin
+
+You do not wire this piece yourself there: `hooks/pawl.py` runs it as gate
+`loop` in Antigravity, Claude Code and Codex, and `hooks/harness.py`
+translates each harness's payload and answer, so the piece only ever sees
+the Antigravity shape below. `PAWL_DISABLE=loop` turns it off for a
+session. The rest of this page is for running the piece on its own.
+
 ## Wire it as a hook
 
 Jetski and Antigravity read `hooks.json`. Match every tool, not only

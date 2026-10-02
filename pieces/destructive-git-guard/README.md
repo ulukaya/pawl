@@ -72,6 +72,14 @@ python3 destructive_git_guard.py roots --cwd /path/to/repo
 `check` exits 0 and prints `allow`, or exits 1 with the deny reason. `roots`
 prints the protected roots in effect for that directory.
 
+## In the pawl plugin
+
+You do not wire this piece yourself there: `hooks/pawl.py` runs it as gate
+`git` in Antigravity, Claude Code and Codex, and `hooks/harness.py`
+translates each harness's payload and answer, so the piece only ever sees
+the Antigravity shape below. `PAWL_DISABLE=git` turns it off for a
+session. The rest of this page is for running the piece on its own.
+
 ## Wire it as a hook
 
 Jetski and Antigravity read `hooks.json`. Add a group like this (adjust the

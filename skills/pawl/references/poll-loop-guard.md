@@ -3,8 +3,12 @@
 CLI:
 
 ```
-python3 -B ${PLUGIN_ROOT}/pieces/poll-loop-guard/poll_loop_guard.py
+python3 -B <root>/pieces/poll-loop-guard/poll_loop_guard.py
 ```
+
+Gate `poll` of `hooks/pawl.py`, on shell commands. A hit asks the user
+(Antigravity `force_ask`, Claude Code `ask`); Codex hooks cannot ask, so
+there it is a deny with the reason.
 
 ## Commands
 
@@ -22,7 +26,7 @@ python3 -B ${PLUGIN_ROOT}/pieces/poll-loop-guard/poll_loop_guard.py
 ## Test
 
 ```bash
-cd ${PLUGIN_ROOT}/pieces/poll-loop-guard && python3 -B -m pytest -q test_poll_loop_guard.py
+cd <root>/pieces/poll-loop-guard && python3 -B -m pytest -q test_poll_loop_guard.py
 ```
 
-Expected: `35 passed`.
+Expected: every test passes.

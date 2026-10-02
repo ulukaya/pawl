@@ -3,8 +3,16 @@
 CLI:
 
 ```
-python3 -B ${PLUGIN_ROOT}/pieces/idle-task-gate/idle_task_gate.py
+python3 -B <root>/pieces/idle-task-gate/idle_task_gate.py
 ```
+
+Gate `idle` of `hooks/pawl.py stop`. Antigravity: walks `/proc` for this
+conversation's task roots older than the age limit; first stop with a set
+blocks and names them, the second terminates the wait shapes and allows.
+Claude Code: reads the Stop payload's background tasks instead; a shell task
+whose command is a wait shape (it never finishes, so it never reports back)
+blocks once per set, then the stop passes. Codex reports no tasks, so the
+gate stays quiet there.
 
 ## Commands
 
@@ -25,7 +33,7 @@ python3 -B ${PLUGIN_ROOT}/pieces/idle-task-gate/idle_task_gate.py
 ## Test
 
 ```bash
-cd ${PLUGIN_ROOT}/pieces/idle-task-gate && python3 -B -m pytest -q test_idle_task_gate.py
+cd <root>/pieces/idle-task-gate && python3 -B -m pytest -q test_idle_task_gate.py
 ```
 
-Expected: `20 passed`.
+Expected: every test passes.

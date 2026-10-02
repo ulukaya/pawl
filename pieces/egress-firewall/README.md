@@ -86,6 +86,14 @@ paths, and domains.
 Regex and path entries may also be bare strings; the pattern then doubles as the
 rule name. All patterns compile with `re.IGNORECASE`.
 
+## In the pawl plugin
+
+You do not wire this piece yourself there: gate `send` of `hooks/pawl.py`
+(`hooks/send_gates.py`) scans the outbound payload of every send, before the
+prose gate and the budget, in Antigravity, Claude Code and Codex.
+`PAWL_DISABLE=egress` skips it for a session, `PAWL_DISABLE=send` all three. The
+rest of this page is for running the piece on its own.
+
 ## Wire it
 
 Add a PreToolUse group to your harness hook config (adjust both paths):

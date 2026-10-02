@@ -40,6 +40,14 @@ of about 2.5 hours, 123 of 310 tool calls were such recovery reads.
 | `reread_guard_hook.py` | PreToolUse hook. |
 | `test_reread_guard.py` | 19 tests: each limit at its edge, bounded twins, turns, stand-down. |
 
+## In the pawl plugin
+
+You do not wire this piece yourself there: `hooks/pawl.py` runs it as gate
+`reread` in Antigravity, Claude Code and Codex, and `hooks/harness.py`
+translates each harness's payload and answer, so the piece only ever sees
+the Antigravity shape below. `PAWL_DISABLE=reread` turns it off for a
+session. The rest of this page is for running the piece on its own.
+
 ## Configuration
 
 | Variable | Meaning | Default |

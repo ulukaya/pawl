@@ -1,7 +1,7 @@
 # pawl-send-gates
 
-Hook: `${PLUGIN_ROOT}/hooks/pawl_hook.py`, registered in `hooks.json` on matcher
-`run_command|run_shell_command`, timeout 10 s.
+Gate `send` of `<root>/hooks/pawl.py` (`hooks/send_gates.py`), on shell
+commands: Antigravity `run_command`, Claude Code and Codex `Bash`.
 
 ## What counts as a send
 
@@ -40,7 +40,8 @@ merely mentions a send tool.
 -   `[PAWL budget] <channel>: <why> (N/M today). Approve to send anyway; the
     send is logged as a human override.`: ceiling burned or owner-DM quiet
     window; decision is `force_ask`, not deny. Approve the prompt; only a human
-    click passes. No command text or env var changes this.
+    click passes. No command text or env var changes this. Codex hooks cannot
+    ask, so there it is a deny: the user sends it by hand.
 
 ## Environment
 
@@ -51,8 +52,8 @@ merely mentions a send tool.
     decision, override`); budget at the ceiling logs `ask`, override true.
 -   `PAWL_DATA/send_budget.json`: counters; `last_spend.reason` holds the tool
     path only, never a recipient or message text.
--   `python3 hooks/pawl_hook.py stats`: per-gate allow/deny/override counts; a
-    gate at 0% or 100% deny is broken.
+-   `python3 <root>/hooks/pawl.py stats`: per-gate allow/deny/override
+    counts; a gate at 0% or 100% deny is broken.
 -   `SEND_BUDGET_CEILINGS`: JSON, e.g. `{"chat_space": 8, "email": 6}`.
 -   `SEND_BUDGET_OWNER_SPACE`: space id that maps to `dm_owner`.
 -   `SEND_BUDGET_TZ`: IANA zone for the day boundary.
@@ -60,7 +61,7 @@ merely mentions a send tool.
 ## Test
 
 ```bash
-cd ${PLUGIN_ROOT}/hooks && python3 -B -m pytest -q hooks_test.py
+cd <root>/hooks && python3 -B -m pytest -q hooks_test.py
 ```
 
-Expected: `43 passed`.
+Expected: every test passes.

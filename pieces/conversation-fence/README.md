@@ -38,6 +38,14 @@ unless the user says otherwise.
 | `conversation_fence_hook.py` | PreToolUse hook. |
 | `test_conversation_fence.py` | 25 tests: lineage, sweeps, path shapes, read-only lookup, switches. |
 
+## In the pawl plugin
+
+You do not wire this piece yourself there: `hooks/pawl.py` runs it as gate
+`fence` in Antigravity, Claude Code and Codex, and `hooks/harness.py`
+translates each harness's payload and answer, so the piece only ever sees
+the Antigravity shape below. `PAWL_DISABLE=fence` turns it off for a
+session. The rest of this page is for running the piece on its own.
+
 ## Configuration
 
 | Variable | Meaning | Default |

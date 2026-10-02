@@ -3,8 +3,12 @@
 CLI:
 
 ```
-python3 -B ${PLUGIN_ROOT}/pieces/destructive-git-guard/destructive_git_guard.py
+python3 -B <root>/pieces/destructive-git-guard/destructive_git_guard.py
 ```
+
+Gate `git` of `hooks/pawl.py`, on shell commands. A hit asks the user
+(Antigravity `force_ask`, Claude Code `ask`); Codex hooks cannot ask, so
+there it is a deny with the reason.
 
 ## Commands
 
@@ -27,7 +31,7 @@ durable path such as `~/worktrees/<name>`.
 ## Test
 
 ```bash
-cd ${PLUGIN_ROOT}/pieces/destructive-git-guard && python3 -B -m pytest -q .
+cd <root>/pieces/destructive-git-guard && python3 -B -m pytest -q .
 ```
 
-Expected: `123 passed`.
+Expected: every test passes.

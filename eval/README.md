@@ -54,16 +54,24 @@ eval/results_table.py seat1/results.jsonl seat2/results.jsonl
 The agent command is called once per run as
 `$PAWL_EVAL_AGENT <workdir> <prompt-file> <plugin-dir>` from inside the
 workdir. `<plugin-dir>` is the staged plugin on the on arm and empty on the
-off arm; the command decides how to load it into a fresh agent session.
+off arm; the command decides how to load it into a fresh agent session. For
+Claude Code, `--plugin-dir` loads it for one headless session:
+
+```bash
+#!/bin/sh
+# run-agent <workdir> <prompt-file> <plugin-dir>
+exec claude -p "$(cat "$2")" ${3:+--plugin-dir "$3"}
+```
+
 `run_arms.sh` exits 2 when `PAWL_EVAL_AGENT` is unset.
 
-The on-arm plugin is a copy of the repo without `eval/` and `.git`, so the
-answer keys are never under the plugin root. Arms and passes run one after
-another, never in parallel, and `PAWL_EVAL_SERVER_PATTERN` makes the run
-refuse to start while a stale agent server could still hold old plugin code.
-Output goes to `PAWL_EVAL_OUT` (default `~/.cache/pawl-eval/<timestamp>`,
-off tmpfs). Each run keeps its prompt, agent log, send log, `PAWL_DATA` and
-verdict.
+The on-arm plugin is a copy of the repo without `eval/`, `.git` and local
+virtualenvs or caches, so the answer keys are never under the plugin root. Arms
+and passes run one after another, never in parallel, and
+`PAWL_EVAL_SERVER_PATTERN` makes the run refuse to start while a stale agent
+server could still hold old plugin code. Output goes to `PAWL_EVAL_OUT` (default
+`~/.cache/pawl-eval/<timestamp>`, off tmpfs). Each run keeps its prompt, agent
+log, send log, `PAWL_DATA` and verdict.
 
 ## Scorecards
 

@@ -197,7 +197,7 @@ def record_event(gate: str, decision: str, override: bool = False) -> None:
   """Appends one gate outcome to gate_events.jsonl.
 
   Never raises; telemetry fails open. A gate that denies everything and a
-  gate that never denies are both broken; the log exists so `pawl_hook.py
+  gate that never denies are both broken; the log exists so `pawl.py
   stats` can show the deny rate and the override rate per gate.
 
   Args:

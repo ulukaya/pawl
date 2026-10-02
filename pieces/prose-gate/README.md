@@ -64,6 +64,14 @@ python3 -m pytest -q test_prose_gate.py
 python3 prose_gate.py --plane deliverable post.md --explain
 ```
 
+## In the pawl plugin
+
+You do not wire this piece yourself there: gate `send` of `hooks/pawl.py`
+(`hooks/send_gates.py`) scores the longest quoted string of every send, between
+the egress firewall and the budget, in Antigravity, Claude Code and Codex.
+`PAWL_DISABLE=prose` skips it for a session, `PAWL_DISABLE=send` all three. The
+rest of this page is for running the piece on its own.
+
 ## Wire it
 
 Pre-commit on a blog repo:

@@ -3,7 +3,7 @@
 CLI:
 
 ```
-python3 -B ${PLUGIN_ROOT}/pieces/oscillation-breaker/oscillation_breaker.py
+python3 -B <root>/pieces/oscillation-breaker/oscillation_breaker.py
 ```
 
 ## Commands
@@ -17,8 +17,11 @@ python3 -B ${PLUGIN_ROOT}/pieces/oscillation-breaker/oscillation_breaker.py
 
 Hashed args drop `toolSummary`/`toolAction` and, on a `view_file` with a
 `StartLine`, the `EndLine`. `manage_task` counts only as `Action=status` with a
-`TaskId`. The ring clears on `schedule` and at turn end (Stop entry,
-`pawl_oscillation_hook.py stop`), so cron wakeups never add up.
+`TaskId` (Claude Code's `TaskOutput` maps to it). A read of a `.log` or
+`.output` file is a poll. The ring clears on `schedule` (Claude Code:
+`CronCreate`, `ScheduleWakeup`) and at turn end (`hooks/pawl.py stop`), so
+cron wakeups never add up. Codex hooks cannot ask, so there a repeat is a
+deny.
 
 ## Environment
 
@@ -33,7 +36,7 @@ Hashed args drop `toolSummary`/`toolAction` and, on a `view_file` with a
 ## Test
 
 ```bash
-cd ${PLUGIN_ROOT}/pieces/oscillation-breaker && python3 -B -m pytest -q .
+cd <root>/pieces/oscillation-breaker && python3 -B -m pytest -q .
 ```
 
-Expected: `33 passed`.
+Expected: every test passes.

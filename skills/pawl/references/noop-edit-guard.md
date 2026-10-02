@@ -3,16 +3,17 @@
 CLI:
 
 ```
-python3 -B ${PLUGIN_ROOT}/pieces/noop-edit-guard/noop_edit_guard.py
+python3 -B <root>/pieces/noop-edit-guard/noop_edit_guard.py
 ```
 
-Hook: `hooks/pawl_noop_edit_hook.py` on
-`replace_file_content|multi_replace_file_content`. Denies a
-`replace_file_content` whose `ReplacementContent` equals its `TargetContent`,
-and a `multi_replace_file_content` where every chunk is such a no-op. Equality
-is exact; a whitespace change is a real edit. Fails open.
+Gate `noop` of `hooks/pawl.py`, on edits. Denies a `replace_file_content`
+(Claude Code: `Edit`) whose replacement equals its target, a
+`multi_replace_file_content` where every chunk is such a no-op, and a Codex
+`apply_patch` that only updates files and whose every hunk puts back the
+lines it takes out. Equality is exact; a whitespace change is a real edit.
+Fails open.
 
-On `[PAWL no-op]`: `view_file` the region you meant to change, then send the
+On `[PAWL no-op]`: re-read the region you meant to change, then send the
 edit with the new text. Do not resend the same pair with another anchor.
 
 ## Commands
@@ -30,7 +31,7 @@ edit with the new text. Do not resend the same pair with another anchor.
 ## Test
 
 ```bash
-cd ${PLUGIN_ROOT}/pieces/noop-edit-guard && python3 -B -m pytest -q .
+cd <root>/pieces/noop-edit-guard && python3 -B -m pytest -q .
 ```
 
-Expected: `24 passed`.
+Expected: every test passes.

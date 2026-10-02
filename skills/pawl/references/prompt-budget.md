@@ -3,7 +3,7 @@
 CLI:
 
 ```
-python3 -B ${PLUGIN_ROOT}/pieces/prompt-budget/prompt_budget.py
+python3 -B <root>/pieces/prompt-budget/prompt_budget.py
 ```
 
 ## Commands
@@ -20,7 +20,7 @@ python3 -B ${PLUGIN_ROOT}/pieces/prompt-budget/prompt_budget.py
 ## Test
 
 ```bash
-cd ${PLUGIN_ROOT}/pieces/prompt-budget && python3 -B -m pytest -q test_prompt_budget.py
+cd <root>/pieces/prompt-budget && python3 -B -m pytest -q test_prompt_budget.py
 ```
 
-Expected: `13 passed`.
+Expected: every test passes.

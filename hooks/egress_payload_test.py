@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for the outbound payload the egress gate scans in pawl_hook.py.
+"""Tests for the outbound payload the egress gate scans in send_gates.py.
 
 Run: python3 -m unittest egress_payload_test -v (from hooks/).
 """

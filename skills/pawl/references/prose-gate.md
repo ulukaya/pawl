@@ -3,7 +3,7 @@
 CLI:
 
 ```
-python3 -B ${PLUGIN_ROOT}/pieces/prose-gate/prose_gate.py
+python3 -B <root>/pieces/prose-gate/prose_gate.py
 ```
 
 ## Commands
@@ -25,7 +25,7 @@ python3 -B ${PLUGIN_ROOT}/pieces/prose-gate/prose_gate.py
 ## Test
 
 ```bash
-cd ${PLUGIN_ROOT}/pieces/prose-gate && python3 -B -m pytest -q test_prose_gate.py
+cd <root>/pieces/prose-gate && python3 -B -m pytest -q test_prose_gate.py
 ```
 
-Expected: `10 passed`.
+Expected: every test passes.

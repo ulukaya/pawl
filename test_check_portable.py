@@ -340,7 +340,7 @@ class SkillEnvTest(unittest.TestCase):
         "skills/pawl/references/ratchet.md": self._skill(
             "ratchet", "- `RATCHET_X`: set.\n- `RATCHET_Y`: unset.\n"
         ),
-        "hooks/pawl_hook.py": 'environ.get("PAWL_DISABLE")\n',
+        "hooks/send_gates.py": 'environ.get("PAWL_DISABLE")\n',
         "pieces/send-budget/send_budget.py": '"SEND_BUDGET_TZ"\n',
         "pieces/egress-firewall/egress_firewall.py": "pass\n",
         "pieces/prose-gate/prose_gate.py": "pass\n",

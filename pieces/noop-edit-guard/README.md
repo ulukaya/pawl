@@ -34,6 +34,14 @@ python3 -m pytest -q .
 python3 noop_edit_guard.py check replace_file_content '{"TargetContent": "a", "ReplacementContent": "a"}'
 ```
 
+## In the pawl plugin
+
+You do not wire this piece yourself there: `hooks/pawl.py` runs it as gate
+`noop` in Antigravity, Claude Code and Codex, and `hooks/harness.py`
+translates each harness's payload and answer, so the piece only ever sees
+the Antigravity shape below. `PAWL_DISABLE=noop` turns it off for a
+session. The rest of this page is for running the piece on its own.
+
 ## Wire it as a hook
 
 ```json
