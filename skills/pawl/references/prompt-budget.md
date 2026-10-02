@@ -1,8 +1,3 @@
----
-name: pawl-prompt-budget
-description: "Token ceiling for always-loaded instruction files (system prompts, rules, pinned memory). Use to keep per-file and total token cost under a budget and to assert frontmatter pins."
----
-
 # pawl-prompt-budget
 
 CLI:

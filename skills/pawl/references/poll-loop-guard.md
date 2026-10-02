@@ -1,8 +1,3 @@
----
-name: pawl-poll-loop-guard
-description: "Prompt (force_ask) before a run_command that is an unbounded wait: a poll loop with sleep, tail -f or watch, or a bare sleep over 600 s. Use to classify a command by hand. Background tasks notify on completion, so waiting in a shell is never needed."
----
-
 # pawl-poll-loop-guard
 
 CLI:

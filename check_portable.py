@@ -18,8 +18,8 @@ Checked:
   7. No markdown prose line over 80 columns. Front matter, fenced code,
      table rows, HTML lines, lines carrying a URL and lines whose only wide
      token is one backtick span are exempt; MarkdownLinter flags the rest.
-  8. Every env var a skills/pawl-<x>/SKILL.md Environment section names
-     appears in that piece's source under pieces/<x>/.
+  8. Every env var a skills/pawl/references/<x>.md Environment section
+     names appears in that piece's source under pieces/<x>/.
 """
 
 from __future__ import annotations
@@ -191,7 +191,7 @@ def check_markdown_width(errors: list[str], root: Path = ROOT) -> None:
       errors.append(f"line over 80: {p.relative_to(root)}:{i}")
 
 
-# Skills whose name does not match their pieces/ directory. pawl-send-gates
+# References whose name does not match their pieces/ directory. send-gates.md
 # documents hooks/pawl_hook.py, which fronts three pieces, so it is checked
 # against the hook plus those pieces.
 SKILL_PIECE_DIRS = {
@@ -223,18 +223,19 @@ def _environment_section(text: str) -> list[str]:
 
 
 def check_skill_env(errors: list[str], root: Path = ROOT) -> None:
-  """Fails when a piece skill documents an env var its source never reads.
+  """Fails when a piece reference documents an env var its source never reads.
 
-  Each skills/pawl-<x>/SKILL.md Environment section may name only variables
-  that appear in pieces/<x>/*.py (or the dirs in SKILL_PIECE_DIRS). This is
-  what catches a generator pasting one piece's block into every skill.
+  Each skills/pawl/references/<x>.md Environment section may name only
+  variables that appear in pieces/<x>/*.py (or the dirs in SKILL_PIECE_DIRS).
+  This is what catches a generator pasting one piece's block into every
+  reference.
 
   Args:
     errors: list that receives one message per unknown variable.
     root: plugin root to scan.
   """
-  for skill in sorted((root / "skills").glob("pawl-*/SKILL.md")):
-    short = skill.parent.name[len("pawl-") :]
+  for skill in sorted((root / "skills" / "pawl" / "references").glob("*.md")):
+    short = skill.stem
     dirs = SKILL_PIECE_DIRS.get(short, (f"pieces/{short}",))
     source = ""
     for d in dirs:

@@ -172,7 +172,7 @@ class MarkdownWidthTest(unittest.TestCase):
 
 
 class SkillEnvTest(unittest.TestCase):
-  """check_skill_env: skill Environment vars must exist in piece source."""
+  """check_skill_env: reference Environment vars must exist in piece source."""
 
   def _tree(self, files: dict[str, str]) -> Path:
     d = Path(tempfile.mkdtemp(prefix="pawl_skenv_"))
@@ -186,16 +186,16 @@ class SkillEnvTest(unittest.TestCase):
   def _skill(self, name: str, env_lines: str) -> str:
     del self  # module-level helper kept beside its tests
     return (
-        f"---\nname: pawl-{name}\n---\n\n# pawl-{name}\n\n## Commands\n\n"
+        f"# pawl-{name}\n\n## Commands\n\n"
         "`X_UNRELATED` in another section is fine.\n\n## Environment\n\n"
         f"{env_lines}\n\n## Test\n\nrun it\n"
     )
 
   def test_pasted_foreign_block_fails_per_var(self):
-    """A skill naming another piece's vars fails once per unknown var."""
+    """A reference naming another piece's vars fails once per unknown var."""
     root = self._tree({
         "pieces/report/report.py": 'os.environ.get("PAWL_DATA")\n',
-        "skills/pawl-report/SKILL.md": self._skill(
+        "skills/pawl/references/report.md": self._skill(
             "report",
             "- `PAWL_DATA`: dir.\n- `SEND_BUDGET_TZ`: zone.\n"
             "- `SEND_BUDGET_OVERRIDE=1`: once.\n",
@@ -207,12 +207,12 @@ class SkillEnvTest(unittest.TestCase):
         errors,
         [
             (
-                "skills/pawl-report/SKILL.md: env var SEND_BUDGET_OVERRIDE not"
-                " in pieces/report"
+                "skills/pawl/references/report.md: env var"
+                " SEND_BUDGET_OVERRIDE not in pieces/report"
             ),
             (
-                "skills/pawl-report/SKILL.md: env var SEND_BUDGET_TZ not in"
-                " pieces/report"
+                "skills/pawl/references/report.md: env var SEND_BUDGET_TZ"
+                " not in pieces/report"
             ),
         ],
     )
@@ -223,11 +223,11 @@ class SkillEnvTest(unittest.TestCase):
         "pieces/prose-gate/prose_gate.py": (
             'os.environ.get("PROSE_GATE_PATTERNS")\n'
         ),
-        "skills/pawl-prose-gate/SKILL.md": self._skill(
+        "skills/pawl/references/prose-gate.md": self._skill(
             "prose-gate", "- `PROSE_GATE_PATTERNS`: catalog path.\n"
         ),
         "pieces/repro-fence/repro_fence.py": "print(1)\n",
-        "skills/pawl-repro-fence/SKILL.md": self._skill(
+        "skills/pawl/references/repro-fence.md": self._skill(
             "repro-fence", "- (none): all inputs are flags.\n"
         ),
     })
@@ -236,17 +236,17 @@ class SkillEnvTest(unittest.TestCase):
     self.assertEqual(errors, [])
 
   def test_ratchet_and_send_gates_map_to_their_dirs(self):
-    """pawl-ratchet reads pieces/ratchet-baseline; send-gates reads hooks."""
+    """ratchet.md reads pieces/ratchet-baseline; send-gates.md reads hooks."""
     root = self._tree({
         "pieces/ratchet-baseline/ratchet.py": 'environ["RATCHET_X"]\n',
-        "skills/pawl-ratchet/SKILL.md": self._skill(
+        "skills/pawl/references/ratchet.md": self._skill(
             "ratchet", "- `RATCHET_X`: set.\n- `RATCHET_Y`: unset.\n"
         ),
         "hooks/pawl_hook.py": 'environ.get("PAWL_DISABLE")\n',
         "pieces/send-budget/send_budget.py": '"SEND_BUDGET_TZ"\n',
         "pieces/egress-firewall/egress_firewall.py": "pass\n",
         "pieces/prose-gate/prose_gate.py": "pass\n",
-        "skills/pawl-send-gates/SKILL.md": self._skill(
+        "skills/pawl/references/send-gates.md": self._skill(
             "send-gates",
             "- `PAWL_DISABLE`: skip.\n- `SEND_BUDGET_TZ`: zone.\n"
             "- `PAWL_NOPE`: missing.\n",
@@ -258,29 +258,31 @@ class SkillEnvTest(unittest.TestCase):
         errors,
         [
             (
-                "skills/pawl-ratchet/SKILL.md: env var RATCHET_Y not in"
+                "skills/pawl/references/ratchet.md: env var RATCHET_Y not in"
                 " pieces/ratchet-baseline"
             ),
             (
-                "skills/pawl-send-gates/SKILL.md: env var PAWL_NOPE not in"
-                " hooks pieces/send-budget pieces/egress-firewall"
+                "skills/pawl/references/send-gates.md: env var PAWL_NOPE"
+                " not in hooks pieces/send-budget pieces/egress-firewall"
                 " pieces/prose-gate"
             ),
         ],
     )
 
   def test_missing_piece_dir_fails(self):
-    """A skill with no matching pieces/ dir is an error, not a pass."""
+    """A reference with no matching pieces/ dir is an error, not a pass."""
     root = self._tree({
-        "skills/pawl-ghost/SKILL.md": self._skill("ghost", "- `A_B`: x.\n"),
+        "skills/pawl/references/ghost.md": self._skill(
+            "ghost", "- `A_B`: x.\n"
+        ),
     })
     errors: list[str] = []
     check_portable.check_skill_env(errors, root=root)
     self.assertEqual(len(errors), 1)
-    self.assertIn("pawl-ghost", errors[0])
+    self.assertIn("references/ghost.md", errors[0])
 
   def test_live_tree_is_clean(self):
-    """Every shipped pawl-* skill names only vars its piece reads."""
+    """Every shipped reference names only vars its piece reads."""
     errors: list[str] = []
     check_portable.check_skill_env(errors)
     self.assertEqual(errors, [])

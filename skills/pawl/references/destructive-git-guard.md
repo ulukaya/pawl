@@ -1,8 +1,3 @@
----
-name: pawl-destructive-git-guard
-description: "Prompt (force_ask) before a run_command that runs git reset, checkout, restore, stash, clean or rm against a protected repo, or any git commit that skips hooks or hides output. Use to check a command by hand or list the roots in effect. Fails closed."
----
-
 # pawl-destructive-git-guard
 
 CLI:

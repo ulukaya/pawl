@@ -173,8 +173,9 @@ idle-task-gate        | Stop hook                  | `pieces/idle-task-gate/idle
 oscillation-breaker   | hook, every tool           | `pieces/oscillation-breaker/oscillation_breaker.py check <conversation-id> view_file '{"path": "a"}'`
 report                | CLI, retro                 | `pieces/report/report.py --days 7`
 
-Each piece directory has its own `README.md` and tests. Skills under `skills/`
-give an agent the flag table for each piece.
+Each piece directory has its own `README.md` and tests. One skill,
+`skills/pawl/SKILL.md`, routes an agent by denial prefix or task to
+`skills/pawl/references/<piece>.md`, which carries that piece's flag table.
 
 ## Verify a checkout
 

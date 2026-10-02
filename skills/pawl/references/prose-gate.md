@@ -1,8 +1,3 @@
----
-name: pawl-prose-gate
-description: "Score a draft for machine-sounding prose before it goes to a human. Use on chat replies, DMs, emails, posts, docs. Exit 1 means rewrite, never bypass."
----
-
 # pawl-prose-gate
 
 CLI:

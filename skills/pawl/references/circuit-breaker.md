@@ -1,8 +1,3 @@
----
-name: pawl-circuit-breaker
-description: "Per-job circuit breaker for scheduled work (cron, sidecars). Use to stop a job that keeps failing from running every cycle, with exponential cooldown and a status view."
----
-
 # pawl-circuit-breaker
 
 CLI:

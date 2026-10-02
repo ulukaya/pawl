@@ -1,8 +1,3 @@
----
-name: pawl-ratchet
-description: "A defect baseline that can only go down: failing tests, bare excepts, lint counts. Use in pre-commit or CI so today's count is the ceiling and every drop is locked with a written reason."
----
-
 # pawl-ratchet
 
 CLI:

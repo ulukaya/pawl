@@ -1,8 +1,3 @@
----
-name: pawl-send-budget
-description: "Cap how many messages go out per channel per local day (chat space, owner DM, email, social). Use to inspect or spend the budget by hand; the pawl hook spends it automatically."
----
-
 # pawl-send-budget
 
 CLI:

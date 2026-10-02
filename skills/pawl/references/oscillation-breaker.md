@@ -1,8 +1,3 @@
----
-name: pawl-oscillation-breaker
-description: "Prompt (force_ask) when a conversation repeats the same tool call with identical args 3 times in a row, or alternates the same 2 or 3 calls twice. Use to inspect or reset the per-conversation ring by hand. Fails open."
----
-
 # pawl-oscillation-breaker
 
 CLI:

@@ -1,8 +1,3 @@
----
-name: pawl-send-gates
-description: "What the pawl PreToolUse hook does to a send-shaped run_command (chat, mail, social post), how to read a deny, and how to recover without weakening the gate."
----
-
 # pawl-send-gates
 
 Hook: `${PLUGIN_ROOT}/hooks/pawl_hook.py`, registered in `hooks.json` on matcher
@@ -47,7 +42,7 @@ merely mentions a send tool.
     window; decision is `force_ask`, not deny. Approve the prompt; only a human
     click passes. No command text or env var changes this.
 
-## Knobs (environment)
+## Environment
 
 -   `PAWL_DATA`: state and rules dir (default `~/.pawl`); seeds
     `SEND_BUDGET_STATE_DIR` when unset.

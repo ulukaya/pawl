@@ -1,8 +1,3 @@
----
-name: pawl-repro-fence
-description: "Two gates for bug fixes: R1 the reproducer must fail on the current tree before the fix, R2 public function and test signatures must survive the change. Use before committing a fix."
----
-
 # pawl-repro-fence
 
 CLI:

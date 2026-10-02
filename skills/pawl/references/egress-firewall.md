@@ -1,8 +1,3 @@
----
-name: pawl-egress-firewall
-description: "Scan outbound text for internal paths, long tokens, hostnames, reasoning tags, and non-allowlisted email addresses before it leaves the machine. Fails closed."
----
-
 # pawl-egress-firewall
 
 CLI:

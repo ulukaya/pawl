@@ -1,8 +1,3 @@
----
-name: pawl-idle-task-gate
-description: "Stop hook that blocks ending a turn while this conversation still has background tasks older than the age limit, names them, and on a second stop with the same set SIGTERMs the unbounded-wait ones. Use to list stale roots by hand. Fails open."
----
-
 # pawl-idle-task-gate
 
 CLI:

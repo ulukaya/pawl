@@ -1,8 +1,3 @@
----
-name: pawl-report
-description: "Print per-gate denial counts from PAWL_DATA/denials.jsonl for the last N days: gate, count, total, date range. A viewer, not a check; prints no command text, hashes or conversation ids."
----
-
 # pawl-report
 
 CLI:
