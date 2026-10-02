@@ -30,3 +30,6 @@ wheels/
 # OS / Editor files
 .DS_Store
 .claude/
+.venv
+.venv/
+venv/
