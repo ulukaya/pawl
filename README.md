@@ -8,10 +8,11 @@ Questions or bugs: open an issue at https://github.com/ulukaya/pawl/issues
 or email ulukaya@gmail.com.
 
 Agents make the same mistakes over and over, and telling them not to in the
-prompt stops working after a page. `pawl` is eleven small checks that run as
+prompt stops working after a page. `pawl` is sixteen small checks that run as
 code, not as instructions, and a report command that tallies what they blocked.
-Each check watches for one mistake and refuses it. Plain Python, no model calls,
-nothing added to the prompt.
+Each check watches for one mistake and refuses it, cleans it up, or (for
+provably read-only commands) waves it through without a prompt. Plain Python, no
+model calls, nothing added to the prompt.
 
 | The mistake             | What pawl does             | Piece                 |
 | ----------------------- | -------------------------- | --------------------- |
@@ -43,6 +44,24 @@ nothing added to the prompt.
 | Grows always-on prompt  | Caps the token size of     | prompt-budget         |
 : files until they cost   : those files                :                       :
 : more than they help     :                            :                       :
+| Calls the same tool     | Asks a human before the    | oscillation-breaker   |
+: with the same arguments : third identical call       :                       :
+: in a loop               :                            :                       :
+| Sends an edit whose     | Refuses the zero-diff edit | noop-edit-guard       |
+: replacement equals its  : and points back to         :                       :
+: target                  : view_file                  :                       :
+| Writes invisible        | Strips them so the write   | zero-width-sanitizer  |
+: zero-width characters   : lands clean                :                       :
+: into a file             :                            :                       :
+| Stalls on a permission  | Auto-approves commands     | readonly-pass         |
+: prompt for `ls` or      : that provably only read    :                       :
+: `git log`               :                            :                       :
+| Re-reads its own        | Refuses past a per-turn    | reread-guard          |
+: transcript after every  : limit                      :                       :
+: context truncation      :                            :                       :
+| Reads another           | Asks the user first        | conversation-fence    |
+: conversation's private  :                            :                       :
+: files                   :                            :                       :
 
 A pawl is the small part in a ratchet that lets the wheel move forward and stops
 it from slipping back. Every check here works the same way: the current state is
@@ -53,33 +72,47 @@ the floor.
 ## What it is not
 
 *   Not a model, model router, or model picker. `pawl` never names, selects,
-    or calls a model. Use whatever model is available in your Jetski client.
-*   Not a replacement for gpowers. gpowers gives an agent skills and a bash
-    guard; `pawl` adds gates on what the agent sends and commits. They run
-    side by side; both register `PreToolUse` hooks on `run_command` and Jetski
-    runs both.
+    or calls a model. Use whatever model is available in your Antigravity
+    client.
+*   Not a replacement for other plugins in your agent harness. Skill packs and
+    shell guards keep doing their jobs; `pawl` adds gates on what the agent
+    sends, commits and reads. Each plugin registers its own `PreToolUse` hooks
+    and the agent harness runs them all.
 *   Not a workflow engine. Nothing here spawns subagents, reads your chat, or
     schedules anything.
 
 ## Install
 
-Add the plugin entry and restart Jetski.
+From a checkout:
 
-Local checkout:
+```bash
+./install.sh
+```
+
+`install.sh` symlinks the checkout to `~/.gemini/config/plugins/pawl`, adds
+`{"path": "plugins/pawl"}` to `~/.gemini/config/plugins.json` next to any
+plugins already listed, and runs the test battery. Running it again changes
+nothing. It refuses to replace a directory or a link that points somewhere
+else unless you pass `--force`. The tests need `pytest`; the plugin itself
+needs only the Python standard library. Set `PAWL_PYTHON` to pick the
+interpreter.
+
+By hand:
 
 ```bash
 mkdir -p ~/.gemini/config/plugins
-cp -r /path/to/pawl ~/.gemini/config/plugins/pawl
+ln -s "$PWD" ~/.gemini/config/plugins/pawl
 python3 -B ~/.gemini/config/plugins/pawl/run_tests.py
 ```
 
-Expected: 20 lines starting `OK`.
-
-In `~/.gemini/config/plugins.json`:
+Expected: 20 lines starting `OK`. Then add the entry to
+`~/.gemini/config/plugins.json`:
 
 ```json
 {"entries": [{"path": "plugins/pawl"}]}
 ```
+
+Restart Antigravity after either path.
 
 Confirm after restart with the plugin inventory in your client; the
 plugin name is `pawl`.
@@ -181,10 +214,10 @@ allow. Fails open. Reason prefix `[IDLE TASK]`.
 | See how often each gate fires       | `python3 hooks/pawl_hook.py stats`    |
 :                                     : (reads                                :
 :                                     : `$PAWL_DATA/gate_events.jsonl`)       :
-| One send past the ceiling           | approve the prompt Jetski shows; only |
-:                                     : a human click passes the ceiling      :
-| One git, poll or repeated call past | approve the prompt Jetski shows; the  |
-: a gate                              : row is logged as a human override     :
+| One send past the ceiling           | approve the prompt Antigravity shows; |
+:                                     : only a human click passes the ceiling :
+| One git, poll or repeated call past | approve the prompt Antigravity shows; |
+: a gate                              : the row is logged as a human override :
 | Change ceilings                     | `SEND_BUDGET_CEILINGS='{"chat_space": |
 :                                     : 4}'`                                  :
 | Change egress rules                 | edit `$PAWL_DATA/egress_rules.json`   |
@@ -193,8 +226,9 @@ allow. Fails open. Reason prefix `[IDLE TASK]`.
 
 ## Pieces
 
-Seventeen pieces: fourteen checks, the zero-width sanitizer, the read-only
-pass, and `report`, a viewer that tallies what the checks blocked.
+Seventeen pieces: sixteen deterministic checks (the zero-width sanitizer and
+the read-only pass among them) and `report`, a viewer that tallies what the
+checks blocked.
 
 Piece                 | Wire point                 | Command
 --------------------- | -------------------------- | -------
@@ -235,7 +269,9 @@ python3 -B run_tests.py
 python3 -B check_portable.py
 ```
 
-`run_tests.py` runs the 20 suites, the last being the eval grader twins.
+`run_tests.py` runs the 20 suites, the last being the eval grader twins; the
+suites use `pytest`. CI runs both commands on Linux and macOS with Python 3.11,
+3.12 and 3.13 (`.github/workflows/ci.yml`).
 `check_portable.py` exits 1 when the tree carries an absolute home path, ships
 an `agents/` or `mcp_config.json`, uses an absolute path in a hook command,
 imports anything outside the standard library, carries a CR byte (CRLF line
