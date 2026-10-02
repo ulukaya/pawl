@@ -7,7 +7,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:

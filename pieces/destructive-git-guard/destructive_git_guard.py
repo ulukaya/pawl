@@ -49,22 +49,28 @@ import hashlib
 import json
 import os
 from pathlib import Path  # pylint: disable=g-importing-member
-import re
-import shlex
 import signal
-import subprocess
 import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+from commit_guard import unsafe_commit_reason
+from git_parse import (
+    _effective_cwd,
+    _git_index,
+    _parse_git,
+    _short_flags,
+    _split_segments,
+    _targets_root,
+    _tokenize,
+    protected_roots,
+)
 import worktree_tmpfs
 
 HOOK_NAME = "destructive_git_guard"
 GATE = "DESTRUCTIVE_GIT"
-ROOTS_ENV = "PAWL_GIT_PROTECTED_ROOTS"
 WATCHDOG_ENV = "PAWL_GIT_GUARD_WATCHDOG_S"
 HOST_TIMEOUT_S = 15.0
-TOPLEVEL_TIMEOUT_S = 3.0
 
 READ_ONLY_SUBCOMMANDS = frozenset({
     "log",
@@ -90,27 +96,6 @@ READ_ONLY_SUBCOMMANDS = frozenset({
 })
 GUARDED_SUBCOMMANDS = frozenset(
     {"reset", "checkout", "restore", "stash", "clean", "rm"}
-)
-
-from commit_guard import unsafe_commit_reason
-from git_parse import (
-    ROOTS_ENV,
-    TOPLEVEL_TIMEOUT_S,
-    _GLOBAL_VALUE_OPTS,
-    _PREFIX_CMDS,
-    _SEPARATORS,
-    _effective_cwd,
-    _git_dir_to_root,
-    _git_index,
-    _inside,
-    _parse_git,
-    _resolve,
-    _short_flags,
-    _split_segments,
-    _targets_root,
-    _tokenize,
-    git_toplevel,
-    protected_roots,
 )
 
 REMEDY = (
@@ -161,7 +146,6 @@ def destructive_reason(subcmd: str, args: List[str]) -> str:
   if subcmd == "rm":
     return "`git rm` deletes tracked files and stages the deletion"
   return ""
-
 
 
 def scan(command: str, cwd: str, roots: Optional[List[str]] = None) -> str:

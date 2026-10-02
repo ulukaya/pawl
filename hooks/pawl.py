@@ -28,7 +28,6 @@ Standard library only.
 from __future__ import annotations
 
 import argparse
-import json
 import os
 from pathlib import Path  # pylint: disable=g-importing-member
 import signal

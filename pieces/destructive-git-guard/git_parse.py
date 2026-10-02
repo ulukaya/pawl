@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path  # pylint: disable=g-importing-member
 import shlex
 import subprocess
 from typing import List, Optional, Tuple
