@@ -219,6 +219,7 @@ installed plugin.
 python3 -m venv .venv && .venv/bin/pip install pytest
 .venv/bin/python3 -B run_tests.py       # one OK line per suite
 .venv/bin/python3 -B check_portable.py  # portable: clean
+git config core.hooksPath .githooks     # run both before every push
 ```
 
 `run_tests.py` runs the hooks suite (including end-to-end runs of the shipped
@@ -228,9 +229,10 @@ non-stdlib import in shipped code, a CR byte, a markdown prose line over 80
 columns, a reference page naming an env var its piece never reads, a hook
 config that does not run `hooks/pawl.py` the way its harness needs,
 manifests that disagree on name or version, a source file over 500 lines, or
-a function nested more than 3 blocks deep. CI runs both on Linux and macOS
-with Python 3.11 to 3.14 (`.github/workflows/ci.yml`). `CLAUDE.md` holds the
-engineering rules; `CHANGELOG.md` the history.
+a function nested more than 3 blocks deep. The `.githooks/pre-push` hook runs
+both and refuses a push that fails. GitHub CI (`.github/workflows/ci.yml`,
+Linux and macOS, Python 3.11 to 3.14) is paused and runs only by hand for
+now. `CLAUDE.md` holds the engineering rules; `CHANGELOG.md` the history.
 
 To add a gate: write the piece under `pieces/<name>/` with its tests, add a
 `Gate` to `hooks/gates.py`, add its Antigravity group to `hooks.json`, and

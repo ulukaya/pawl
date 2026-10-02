@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# pre-push: run the checks CI would run, and refuse the push if they fail.
+#
+# Enable once per clone:   git config core.hooksPath .githooks
+# Skip once (not advised): git push --no-verify
+#
+# Uses PAWL_PYTHON, else .venv/bin/python3, else python3. The battery needs
+# pytest; without it the hook says so and refuses (exit 2).
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+PY="${PAWL_PYTHON:-}"
+if [[ -z "$PY" && -x "$ROOT/.venv/bin/python3" ]]; then
+  PY="$ROOT/.venv/bin/python3"
+fi
+PY="${PY:-python3}"
+
+echo "pre-push: $PY -B check_portable.py" >&2
+"$PY" -B "$ROOT/check_portable.py" >&2
+echo "pre-push: $PY -B run_tests.py" >&2
+"$PY" -B "$ROOT/run_tests.py" >&2

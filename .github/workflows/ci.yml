@@ -1,8 +1,13 @@
 name: ci
 
+# Paused: GitHub-hosted runners are unavailable on this account for now, so
+# runs never start. Until then CI runs by hand only; restore the push and
+# pull_request triggers below to turn it back on. Locally:
+#   python3 -B check_portable.py && python3 -B run_tests.py
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
+  # push:
+  # pull_request:
 
 permissions:
   contents: read
