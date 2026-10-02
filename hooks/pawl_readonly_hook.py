@@ -15,7 +15,26 @@ HERE = Path(__file__).resolve().parent
 PIECES = HERE.parent / "pieces"
 sys.path.insert(0, str(PIECES / "readonly-pass"))
 
-import readonly_pass  # noqa: E402  # pylint: disable=g-import-not-at-top
+# pylint: disable=g-import-not-at-top
+import pawl_harness  # noqa: E402
+import readonly_pass  # noqa: E402
+# pylint: enable=g-import-not-at-top
+
+
+def main() -> None:
+  readonly_pass.arm_watchdog(readonly_pass.watchdog_budget_s())
+  raw = sys.stdin.read()
+  try:
+    result = readonly_pass.run_hook(raw)
+  finally:
+    readonly_pass.disarm_watchdog()
+  payload = readonly_pass.read_payload(raw)
+  pawl_harness.emit_decision(
+      result.get("decision", "allow"),
+      reason=result.get("reason", ""),
+      payload=payload,
+  )
+
 
 if __name__ == "__main__":
-  readonly_pass.hook_main()
+  main()

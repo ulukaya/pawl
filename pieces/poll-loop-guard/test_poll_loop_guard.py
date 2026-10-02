@@ -264,3 +264,15 @@ def test_denial_log_never_raises_on_unwritable_dir(
       "PAWL_DATA", str(blocker / "sub")
   )  # parent is a file: mkdir fails
   plg.record_denial("POLL_LOOP", "tail -f x", {})  # must not raise
+
+
+def test_evaluate_claude_bash_tool() -> None:
+  payload = json.dumps({
+      "tool_name": "Bash",
+      "tool_input": {"command": "tail -f server.log"},
+  })
+  decision, reason, cmd, parsed = plg.evaluate(payload)
+  assert decision == "deny"
+  assert "TAIL" in reason
+  assert cmd == "tail -f server.log"
+

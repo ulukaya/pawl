@@ -46,6 +46,7 @@ HOST_TIMEOUT_S = 15.0
 ALLOW = {"decision": "allow"}
 REPLACE_TOOL = "replace_file_content"
 MULTI_TOOL = "multi_replace_file_content"
+CLAUDE_EDIT_TOOLS = frozenset({"Edit", "edit"})
 
 
 # --- rule ---------------------------------------------------------------------
@@ -56,15 +57,19 @@ def _is_noop(chunk: Any) -> bool:
   if not isinstance(chunk, dict):
     return False
   target = chunk.get("TargetContent")
+  if target is None:
+    target = chunk.get("old_string")
   repl = chunk.get("ReplacementContent")
+  if repl is None:
+    repl = chunk.get("new_string")
   return isinstance(target, str) and isinstance(repl, str) and target == repl
 
 
 def _chunks(tool: str, args: Any) -> List[Any]:
-  """The edit chunks of a replace call, or [] for anything else."""
+  """The edit chunks of an edit or replace call, or [] for anything else."""
   if not isinstance(args, dict):
     return []
-  if tool == REPLACE_TOOL:
+  if tool == REPLACE_TOOL or tool in CLAUDE_EDIT_TOOLS:
     return [args]
   chunks = args.get("ReplacementChunks") if tool == MULTI_TOOL else None
   return chunks if isinstance(chunks, list) else []
@@ -75,16 +80,21 @@ def noop_reason(tool: str, args: Any) -> str:
   chunks = _chunks(tool, args)
   if not chunks or not all(_is_noop(c) for c in chunks):
     return ""
-  name = os.path.basename(str(args.get("TargetFile") or "")) or "the file"
-  what = (
-      "ReplacementContent equals TargetContent"
-      if tool == REPLACE_TOOL
-      else f"all {len(chunks)} chunks have ReplacementContent equal to"
-      " TargetContent"
-  )
+  raw_file = args.get("TargetFile") or args.get("file_path") or ""
+  name = os.path.basename(str(raw_file)) or "the file"
+  if tool in CLAUDE_EDIT_TOOLS:
+    what = "new_string equals old_string"
+  elif tool == REPLACE_TOOL:
+    what = "ReplacementContent equals TargetContent"
+  else:
+    what = (
+        f"all {len(chunks)} chunks have ReplacementContent equal to"
+        " TargetContent"
+    )
+  action = "Read" if tool in CLAUDE_EDIT_TOOLS else "view_file"
   return (
       f"{PREFIX} {tool} on {name}: {what}, so the edit changes nothing."
-      " view_file the region you meant to change and send the edit with the"
+      f" {action} the region you meant to change and send the edit with the"
       " new text."
   )
 

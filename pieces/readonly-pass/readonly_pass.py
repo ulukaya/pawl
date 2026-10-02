@@ -57,7 +57,9 @@ WATCHDOG_ENV = "PAWL_READONLY_PASS_WATCHDOG_S"
 HOST_TIMEOUT_S = 15.0
 ALLOW = {"decision": "allow"}
 APPROVE = {"decision": "auto_approve"}
-SHELL_TOOLS = frozenset({"run_command", "run_shell_command"})
+SHELL_TOOLS = frozenset({
+    "run_command", "run_shell_command", "Bash", "bash", "exec_command", "shell",
+})
 SANDBOX_BYPASS_KEYS = frozenset({
     "BypassSandbox", "bypass_sandbox", "DangerouslyDisableSandbox",
     "dangerouslyDisableSandbox", "dangerously_disable_sandbox",

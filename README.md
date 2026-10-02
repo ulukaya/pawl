@@ -2,7 +2,7 @@
 
 <img src="assets/logo.svg" width="96" alt="pawl mark: a hook holding a gear">
 
-Plugin for Antigravity.
+Plugin for Antigravity, Claude Code, and OpenAI Codex.
 
 Questions or bugs: open an issue at https://github.com/ulukaya/pawl/issues
 or email ulukaya@gmail.com.
@@ -253,6 +253,23 @@ report                | CLI, retro                 | `pieces/report/report.py --
 Each piece directory has its own `README.md` and tests. One skill,
 `skills/pawl/SKILL.md`, routes an agent by denial prefix or task to
 `skills/pawl/references/<piece>.md`, which carries that piece's flag table.
+
+## Installation
+
+Install into all detected agent harnesses
+(`~/.gemini`, `~/.claude`, `~/.codex`):
+
+```bash
+./install.sh
+```
+
+Or target a specific harness:
+
+```bash
+./install.sh --antigravity  # Google Antigravity / Jetski (~/.gemini/config)
+./install.sh --claude       # Claude Code (~/.claude/plugins/pawl)
+./install.sh --codex        # OpenAI Codex / Agent Skills (~/.codex, ~/.agent-skills)
+```
 
 ## Eval
 

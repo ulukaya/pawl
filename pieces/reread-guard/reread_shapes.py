@@ -52,13 +52,24 @@ def _int(value: Any) -> Optional[int]:
 
 
 def view_reads(args: Dict[str, Any]) -> List[Read]:
-  path = args.get("AbsolutePath") or args.get("path")
+  path = args.get("AbsolutePath") or args.get("path") or args.get("file_path")
   if not isinstance(path, str) or not path:
     return []
   start, end = _int(args.get("StartLine")), _int(args.get("EndLine"))
-  bounded = start is not None and end is not None
-  bounded = bounded and end - start + 1 < VIEW_SPAN_UNDER
-  return [Read(path, bounded, start is None or start <= 1)]
+  limit = _int(args.get("limit"))
+  if start is not None and end is not None:
+    bounded = end - start + 1 < VIEW_SPAN_UNDER
+  elif limit is not None:
+    bounded = limit < VIEW_SPAN_UNDER
+  else:
+    bounded = False
+  offset = _int(args.get("offset"))
+  from_top = (
+      start is None or start <= 1
+      if start is not None
+      else (offset is None or offset <= 1)
+  )
+  return [Read(path, bounded, from_top)]
 
 
 # --- shell --------------------------------------------------------------------

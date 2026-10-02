@@ -215,3 +215,24 @@ def test_cli_strip_filters_stdin() -> None:
       text=True, timeout=20, check=False,
   )
   assert bad.returncode == 2
+
+
+def test_sanitize_claude_write_tool() -> None:
+  dirty = {"file_path": "a.py", "content": "hello\u200bworld"}
+  clean = zws.sanitize("Write", dirty)
+  assert clean == {"file_path": "a.py", "content": "helloworld"}
+
+
+def test_sanitize_claude_edit_tool() -> None:
+  dirty = {
+      "file_path": "a.py",
+      "old_string": "old\ufeff",
+      "new_string": "new\u2060text",
+  }
+  clean = zws.sanitize("Edit", dirty)
+  assert clean == {
+      "file_path": "a.py",
+      "old_string": "old",
+      "new_string": "newtext",
+  }
+

@@ -270,3 +270,15 @@ def test_unwritable_state_fails_open(s: Session, tmp_path: Path) -> None:
   (tmp_path / "data" / "reread").write_text("a file, not a dir")
   assert s.decisions([lambda: s.view(s.skill)] * 8) == ["allow"] * 8
   assert rg.run_hook("{nope") == {"decision": "allow"}
+
+
+def test_claude_read_tool(s: Session) -> None:
+  payload = {
+      "session_id": CONV,
+      "tool_name": "Read",
+      "tool_input": {"file_path": str(s.skill)},
+      "transcript_path": str(s.transcript),
+  }
+  decisions = [rg.decide(payload)["decision"] for _ in range(6)]
+  assert decisions == ["allow"] * 5 + ["deny"]
+

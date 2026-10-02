@@ -128,7 +128,10 @@ def command_of(payload: Dict[str, Any]) -> str:
       or payload.get("tool_name")
       or ""
   )
-  if name not in {"run_command", "run_shell_command"}:
+  if name not in {
+      "run_command", "run_shell_command", "Bash", "bash", "exec_command",
+      "shell",
+  }:
     return ""
   args = (
       call.get("args")

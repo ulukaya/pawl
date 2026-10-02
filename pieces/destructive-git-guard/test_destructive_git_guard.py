@@ -437,3 +437,15 @@ def test_cli_check_and_roots(repo: Path) -> None:
       ).returncode
       == 2
   )
+
+
+def test_evaluate_claude_bash_tool(repo: Path) -> None:
+  payload = json.dumps({
+      "tool_name": "Bash",
+      "tool_input": {"command": "git reset --hard", "cwd": str(repo)},
+  })
+  decision, reason, cmd, parsed = dgg.evaluate(payload)
+  assert decision == "deny"
+  assert "git reset" in reason
+  assert cmd == "git reset --hard"
+

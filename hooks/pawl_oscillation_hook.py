@@ -15,7 +15,28 @@ HERE = Path(__file__).resolve().parent
 PIECES = HERE.parent / "pieces"
 sys.path.insert(0, str(PIECES / "oscillation-breaker"))
 
-import oscillation_breaker  # noqa: E402  # pylint: disable=g-import-not-at-top
+# pylint: disable=g-import-not-at-top
+import oscillation_breaker  # noqa: E402
+import pawl_harness  # noqa: E402
+# pylint: enable=g-import-not-at-top
+
+
+def main() -> None:
+  stop = sys.argv[1:] == ["stop"]
+  handler = oscillation_breaker.end_turn if stop else oscillation_breaker.run_hook
+  oscillation_breaker.arm_watchdog(oscillation_breaker.watchdog_budget_s())
+  raw = sys.stdin.read()
+  try:
+    result = handler(raw)
+  finally:
+    oscillation_breaker.disarm_watchdog()
+  payload = oscillation_breaker.read_payload(raw)
+  pawl_harness.emit_decision(
+      result.get("decision", "allow"),
+      reason=result.get("reason", ""),
+      payload=payload,
+  )
+
 
 if __name__ == "__main__":
-  oscillation_breaker.hook_main(stop=sys.argv[1:] == ["stop"])
+  main()

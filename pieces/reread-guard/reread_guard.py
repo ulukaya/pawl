@@ -60,7 +60,9 @@ STAND_DOWN_AFTER = 3
 TRANSCRIPT_RE = re.compile(r"^transcript.*\.jsonl$")
 MEMORY_NAMES = frozenset({"MEMORY.md", "GEMINI.md", "AGENTS.md", "CLAUDE.md"})
 MEMORY_DIRS = frozenset({"memory", "memories"})
-SHELL_TOOLS = frozenset({"run_command", "run_shell_command"})
+SHELL_TOOLS = frozenset({
+    "run_command", "run_shell_command", "Bash", "bash", "exec_command", "shell",
+})
 RECOVERY = (
     " Keep recovery notes in one scratch file, read it once, answer from what"
     " you already have, and name any fact that is still missing."
@@ -111,7 +113,7 @@ def counted(read: reread_shapes.Read, payload: Dict[str, Any], conv: str,
 
 
 def reads_of(tool: str, args: Dict[str, Any]) -> List[reread_shapes.Read]:
-  if tool == "view_file":
+  if tool in ("view_file", "Read", "read"):
     return reread_shapes.view_reads(args)
   if tool in SHELL_TOOLS:
     cmd = args.get("CommandLine") or args.get("command") or ""
@@ -135,7 +137,7 @@ def turn_key(payload: Dict[str, Any]) -> str:
   turn = payload.get("turnId") or payload.get("turn_id")
   if isinstance(turn, (str, int)) and str(turn):
     return f"id:{turn}"
-  tp = payload.get("transcriptPath")
+  tp = payload.get("transcriptPath") or payload.get("transcript_path")
   try:
     text = Path(os.path.expanduser(str(tp))).read_text(errors="replace")
   except (OSError, TypeError, ValueError):
@@ -199,7 +201,11 @@ def tool_and_args(payload: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
 
 
 def _evaluate(payload: Dict[str, Any]) -> Dict[str, str]:
-  conv = payload.get("conversationId") or payload.get("conversation_id")
+  conv = (
+      payload.get("conversationId")
+      or payload.get("conversation_id")
+      or payload.get("session_id")
+  )
   if os.environ.get(OFF_ENV) == "1" or not isinstance(conv, str) or not conv:
     return dict(ALLOW)
   tool, args = tool_and_args(payload)

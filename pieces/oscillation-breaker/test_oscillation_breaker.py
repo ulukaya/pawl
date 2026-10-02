@@ -258,3 +258,23 @@ def test_cli_usage_errors() -> None:
   assert run_cli("check", CONV).returncode == 2
   assert run_cli("check", CONV, "view_file", "{bad").returncode == 2
   assert run_cli("bogus", CONV).returncode == 2
+
+
+def test_claude_session_oscillation(monkeypatch: pytest.MonkeyPatch) -> None:
+  monkeypatch.delenv("CONVERSATION_ID", raising=False)
+  monkeypatch.delenv(ob.CONV_ENV, raising=False)
+  monkeypatch.delenv("JETSKI_CONVERSATION_ID", raising=False)
+  session = "claude-session-123"
+  p = json.dumps({
+      "session_id": session,
+      "tool_name": "Bash",
+      "tool_input": {"command": "cargo test"},
+  })
+  assert ob.decide(ob.read_payload(p)) == {"decision": "allow"}
+  assert ob.decide(ob.read_payload(p)) == {"decision": "allow"}
+  out = ob.decide(ob.read_payload(p))
+  assert out["decision"] == "force_ask"
+  assert "Bash repeated" in out["reason"]
+
+
+

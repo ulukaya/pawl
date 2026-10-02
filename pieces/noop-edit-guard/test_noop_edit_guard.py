@@ -223,3 +223,24 @@ def test_cli_check_exit_codes() -> None:
   assert good.returncode == 0 and "allow" in good.stdout
   assert run("check", "replace_file_content", "{bad").returncode == 2
   assert run().returncode == 2
+
+
+def test_claude_edit_tool_noop_denies() -> None:
+  args = {
+      "file_path": FILE,
+      "old_string": "hello world",
+      "new_string": "hello world",
+  }
+  reason = neg.noop_reason("Edit", args)
+  assert reason.startswith("[PAWL no-op]")
+  assert "new_string equals old_string" in reason
+
+
+def test_claude_edit_tool_different_allows() -> None:
+  args = {
+      "file_path": FILE,
+      "old_string": "hello world",
+      "new_string": "hello there",
+  }
+  assert neg.noop_reason("Edit", args) == ""
+

@@ -1,78 +1,98 @@
 #!/usr/bin/env bash
-# install.sh: link this checkout into the agent harness and verify it.
+# install.sh: link this checkout into agent harnesses and verify it.
 #
-#   1. Symlink the checkout to <config>/plugins/pawl. An existing link to this
-#      checkout is left alone. A link elsewhere, or a real directory, is
-#      refused unless --force is given; --force relinks, and moves a real
-#      directory aside to pawl.bak.<timestamp> instead of deleting it.
-#   2. Add {"path": "plugins/pawl"} to <config>/plugins.json, keeping every
-#      entry already there. An entry that is already present is not added
-#      twice. The file is rewritten atomically.
-#   3. Run run_tests.py through the link.
-#
-# <config> is ~/.gemini/config, or PAWL_PLUGIN_CONFIG_DIR when set. The
-# interpreter is PAWL_PYTHON, else python3; the tests need pytest, the plugin
-# itself only the standard library.
+# Options:
+#   --antigravity  Install into Antigravity / Jetski (~/.gemini/config)
+#   --claude       Install into Claude Code (~/.claude/plugins/pawl)
+#   --codex        Install into Codex / Agent Skills (~/.codex, ~/.agent-skills)
+#   --all          Install into all detected harnesses (default when no flags)
+#   --force        Relink or move aside conflicting directories
+#   -h, --help     Show this help
 #
 # Exit codes: 0 installed and verified; 1 refused a conflict or tests
-# failed; 2 missing interpreter or pytest, or an unreadable plugins.json.
+# failed; 2 missing interpreter or pytest, or an unreadable registry.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 CONFIG="${PAWL_PLUGIN_CONFIG_DIR:-$HOME/.gemini/config}"
+CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+CODEX_DIR="${CODEX_CONFIG_DIR:-$HOME/.codex}"
+AGENT_SKILLS_DIR="${AGENT_SKILLS_CONFIG_DIR:-$HOME/.agent-skills}"
 DEST="$CONFIG/plugins/pawl"
 REGISTRY="$CONFIG/plugins.json"
 PYTHON="${PAWL_PYTHON:-python3}"
 FORCE=0
 
+TARGET_ANTIGRAVITY=0
+TARGET_CLAUDE=0
+TARGET_CODEX=0
+SPECIFIC_TARGET=0
+
 for arg in "$@"; do
   case "$arg" in
     --force) FORCE=1 ;;
-    -h|--help) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --antigravity) TARGET_ANTIGRAVITY=1; SPECIFIC_TARGET=1 ;;
+    --claude) TARGET_CLAUDE=1; SPECIFIC_TARGET=1 ;;
+    --codex) TARGET_CODEX=1; SPECIFIC_TARGET=1 ;;
+    --all) SPECIFIC_TARGET=0 ;;
+    -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "install: unknown option $arg (use --force or --help)" >&2
        exit 1 ;;
   esac
 done
+
+if [[ "$SPECIFIC_TARGET" -eq 0 ]]; then
+  TARGET_ANTIGRAVITY=1
+  if [[ -d "$CLAUDE_DIR" ]]; then
+    TARGET_CLAUDE=1
+  fi
+  if [[ -d "$CODEX_DIR" ]] || [[ -d "$AGENT_SKILLS_DIR" ]]; then
+    TARGET_CODEX=1
+  fi
+fi
 
 if ! command -v "$PYTHON" > /dev/null; then
   echo "install: $PYTHON not found; set PAWL_PYTHON to a Python 3 binary" >&2
   exit 2
 fi
 
-link_plugin() {
-  mkdir -p "$CONFIG/plugins"
-  if [[ -L "$DEST" ]]; then
+symlink_path() {
+  local target="$1"
+  local dest="$2"
+  local parent
+  parent="$(dirname "$dest")"
+  mkdir -p "$parent"
+  if [[ -L "$dest" ]]; then
     local current
-    current="$(cd "$DEST" 2> /dev/null && pwd -P || readlink "$DEST")"
-    if [[ "$current" == "$REPO" ]]; then
-      echo "link: $DEST -> $REPO (already in place)"
+    current="$(cd "$dest" 2> /dev/null && pwd -P || readlink "$dest")"
+    if [[ "$current" == "$target" ]]; then
+      echo "link: $dest -> $target (already in place)"
       return 0
     fi
     if [[ "$FORCE" != 1 ]]; then
-      echo "install: $DEST points to $current; rerun with --force" \
-        "to point it at $REPO" >&2
+      echo "install: $dest points to $current; rerun with --force to point it at $target" >&2
       exit 1
     fi
-    ln -sfn "$REPO" "$DEST"
-    echo "link: $DEST -> $REPO (replaced link to $current)"
+    ln -sfn "$target" "$dest"
+    echo "link: $dest -> $target (replaced link to $current)"
     return 0
   fi
-  if [[ -e "$DEST" ]]; then
+  if [[ -e "$dest" ]]; then
     if [[ "$FORCE" != 1 ]]; then
-      echo "install: $DEST exists and is not a link; rerun with --force" \
-        "to move it aside" >&2
+      echo "install: $dest exists and is not a link; rerun with --force to move it aside" >&2
       exit 1
     fi
     local backup
-    backup="$DEST.bak.$(date +%Y%m%d-%H%M%S)"
-    mv "$DEST" "$backup"
-    echo "moved: $DEST -> $backup"
+    backup="$dest.bak.$(date +%Y%m%d-%H%M%S)"
+    mv "$dest" "$backup"
+    echo "moved: $dest -> $backup"
   fi
-  ln -s "$REPO" "$DEST"
-  echo "link: $DEST -> $REPO"
+  ln -s "$target" "$dest"
+  echo "link: $dest -> $target"
 }
 
-register_plugin() {
+register_antigravity() {
+  mkdir -p "$CONFIG"
   "$PYTHON" - "$REGISTRY" << 'PY'
 import json
 import os
@@ -111,18 +131,35 @@ print(f"registry: added {entry['path']} to {path}"
 PY
 }
 
-link_plugin
-register_plugin
+if [[ "$TARGET_ANTIGRAVITY" -eq 1 ]]; then
+  echo "==> Antigravity / Jetski..."
+  symlink_path "$REPO" "$DEST"
+  register_antigravity
+fi
+
+if [[ "$TARGET_CLAUDE" -eq 1 ]]; then
+  echo "==> Claude Code..."
+  symlink_path "$REPO" "$CLAUDE_DIR/plugins/pawl"
+  if [[ -d "$CLAUDE_DIR/skills" ]]; then
+    symlink_path "$REPO/skills/pawl" "$CLAUDE_DIR/skills/pawl"
+  fi
+fi
+
+if [[ "$TARGET_CODEX" -eq 1 ]]; then
+  echo "==> OpenAI Codex / Agent Skills..."
+  symlink_path "$REPO/skills/pawl" "$CODEX_DIR/skills/pawl"
+  symlink_path "$REPO/skills/pawl" "$AGENT_SKILLS_DIR/pawl"
+fi
 
 if ! "$PYTHON" -c 'import pytest' 2> /dev/null; then
   echo "install: linked and registered, but $PYTHON has no pytest, so the" \
     "tests cannot run; install pytest or set PAWL_PYTHON, then run" \
-    "$PYTHON -B $DEST/run_tests.py" >&2
+    "$PYTHON -B $REPO/run_tests.py" >&2
   exit 2
 fi
-echo "verify: $PYTHON -B $DEST/run_tests.py"
-if ! "$PYTHON" -B "$DEST/run_tests.py"; then
+echo "verify: $PYTHON -B $REPO/run_tests.py"
+if ! "$PYTHON" -B "$REPO/run_tests.py"; then
   echo "install: tests failed; the plugin is linked but not verified" >&2
   exit 1
 fi
-echo "pawl installed; restart Antigravity to load it"
+echo "pawl installed and verified across all target harnesses."

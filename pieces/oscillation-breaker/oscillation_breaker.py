@@ -230,7 +230,12 @@ def observe(conv: str, tool: str, args: Any) -> Optional[str]:
 def resolve_conversation_id(payload: Dict[str, Any]) -> str:
   vals = [
       payload.get(k)
-      for k in ("conversationId", "conversation_id", "notify_conversation")
+      for k in (
+          "conversationId",
+          "conversation_id",
+          "session_id",
+          "notify_conversation",
+      )
   ]
   vals += [
       os.environ.get(k, "")

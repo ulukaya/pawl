@@ -55,6 +55,10 @@ _ZWJ_PROTECTED = "\x00_ZWJ_\x00"
 CONTENT_FIELDS = {
     "write_to_file": ("CodeContent",),
     "replace_file_content": ("TargetContent", "ReplacementContent"),
+    "Write": ("content",),
+    "write": ("content",),
+    "Edit": ("old_string", "new_string"),
+    "edit": ("old_string", "new_string"),
 }
 
 

@@ -1,0 +1,97 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_hook.py",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_git_hook.py",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_poll_hook.py",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_readonly_hook.py",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_noop_edit_hook.py",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_zero_width_hook.py",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_zero_width_hook.py",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_reread_hook.py",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_oscillation_hook.py",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_fence_hook.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_stop_hook.py",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl_oscillation_hook.py stop",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

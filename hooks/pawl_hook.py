@@ -52,6 +52,8 @@ import send_budget  # noqa: E402
 
 # pylint: enable=g-import-not-at-top
 
+import pawl_harness  # noqa: E402
+
 DEFAULT_RULES = HERE / "egress_rules.default.json"
 PROSE_MIN_WORDS = 40
 _QUOTED = re.compile(r"'((?:[^'\\]|\\.)*)'|\"((?:[^\"\\]|\\.)*)\"", re.S)
@@ -74,14 +76,14 @@ def disabled() -> Set[str]:
 DECISIONS = ("allow", "deny", "force_ask")
 
 
-def emit(decision: str, reason: str = "") -> None:
+def emit(
+    decision: str,
+    reason: str = "",
+    payload: Optional[Dict[str, Any]] = None,
+) -> None:
   """Writes one PreToolUse decision: allow, deny, or force_ask."""
   assert decision in DECISIONS, decision
-  out = {"decision": decision}
-  if reason:
-    out["reason"] = reason
-  sys.stdout.write(json.dumps(out))
-  sys.stdout.flush()
+  pawl_harness.emit_decision(decision, reason=reason, payload=payload)
 
 
 def command_from(payload: Dict[str, Any]) -> str:
@@ -331,16 +333,18 @@ def main() -> None:
   if sys.argv[1:] == ["stats"]:
     print_stats()
     return
+  payload: Dict[str, Any] = {}
   try:
-    payload = json.loads(sys.stdin.read() or "{}")
-    command = command_from(payload if isinstance(payload, dict) else {})
+    data = json.loads(sys.stdin.read() or "{}")
+    if isinstance(data, dict):
+      payload = data
+    command = command_from(payload)
   except Exception:  # pylint: disable=broad-exception-caught
     # fail open: unreadable input is not the agent's fault
-
-    emit("allow")
+    emit("allow", payload=payload)
     return
   decision, reason = decide(command)
-  emit(decision, reason)
+  emit(decision, reason, payload=payload)
 
 
 if __name__ == "__main__":

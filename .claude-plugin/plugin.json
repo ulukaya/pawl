@@ -1,0 +1,8 @@
+{
+  "name": "pawl",
+  "version": "0.3.0",
+  "description": "Sixteen deterministic safety gates stopping message flooding, credential egress, bot slop, destructive git, poll loops, repeating tool oscillations, zero-width characters, and cross-conversation file snooping.",
+  "author": {
+    "name": "Ulukaya"
+  }
+}

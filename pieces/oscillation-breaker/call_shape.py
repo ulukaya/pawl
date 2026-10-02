@@ -57,7 +57,12 @@ def is_poll(tool: str, args: Any) -> bool:
   """True for a task status check or a read of a .log file."""
   if is_task_status(tool, args):
     return True
-  if tool != VIEW_TOOL or not isinstance(args, dict):
+  if tool not in (VIEW_TOOL, "Read", "read") or not isinstance(args, dict):
     return False
-  path = str(args.get("AbsolutePath") or args.get("path") or "")
+  path = str(
+      args.get("AbsolutePath")
+      or args.get("path")
+      or args.get("file_path")
+      or ""
+  )
   return path.endswith(".log")

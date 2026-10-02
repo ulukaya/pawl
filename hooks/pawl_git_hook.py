@@ -29,6 +29,8 @@ import destructive_git_guard as piece  # noqa: E402
 
 # pylint: enable=g-import-not-at-top
 
+import pawl_harness  # noqa: E402
+
 PREFIX = "[PAWL git]"
 TAIL = " Approve to run anyway; the run is logged as a human override."
 
@@ -56,12 +58,17 @@ def decide(raw: str) -> Dict[str, str]:
 
 def main() -> None:
   piece.arm_watchdog(piece.watchdog_budget_s())
+  raw = sys.stdin.read()
   try:
-    result = decide(sys.stdin.read())
+    result = decide(raw)
   finally:
     piece.disarm_watchdog()
-  sys.stdout.write(json.dumps(result))
-  sys.stdout.flush()
+  payload, _ = piece.read_payload(raw)
+  pawl_harness.emit_decision(
+      result["decision"],
+      reason=result.get("reason", ""),
+      payload=payload or {},
+  )
 
 
 if __name__ == "__main__":

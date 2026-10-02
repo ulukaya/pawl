@@ -337,3 +337,12 @@ def test_cli_check_exit_codes() -> None:
   no = cli("check", "rm", "x")
   assert no.returncode == 1 and "prompt" in no.stdout
   assert cli().returncode == 2
+
+
+def test_decide_claude_bash_tool() -> None:
+  payload = {
+      "tool_name": "Bash",
+      "tool_input": {"command": "ls -la"},
+  }
+  assert rp.decide(payload) == {"decision": "auto_approve"}
+
