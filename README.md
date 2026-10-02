@@ -109,7 +109,8 @@ Prompts (`force_ask`) on `git reset|checkout|restore|stash|clean|rm` forms that
 discard work in a protected repo (`PAWL_GIT_PROTECTED_ROOTS`, default the git
 toplevel of the call's cwd), and in any repo on a `git commit` with
 `--no-verify`, a short cluster carrying `n`, or output piped to
-`tail`/`head`/`/dev/null`. Only a human click runs the command; the row in
+`tail`/`head`/`/dev/null`, or a `git worktree add` onto tmpfs (`/tmp`,
+`/dev/shm`, `/run`). Only a human click runs the command; the row in
 `denials.jsonl` carries outcome `force_ask`. Unparsable stdin is a deny. Reason
 prefix `[PAWL git]`.
 

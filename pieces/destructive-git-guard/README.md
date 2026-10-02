@@ -1,7 +1,7 @@
 # Destructive git guard
 
 One piece of the CoS blueprint, published on its own so you can run it in ten
-minutes. Three files, standard library only, no dependency on the rest of the
+minutes. Five files, standard library only, no dependency on the rest of the
 system.
 
 ## What it does
@@ -12,7 +12,14 @@ pathspec (`--`, `.`, `-f`), `restore` that touches the working tree, `stash`
 (anything but `list`/`show`), `clean` (anything but a dry run, `-fdx` clusters
 included) and `rm`. In every repo it also denies a `git commit` that hides a
 rejected commit: `--no-verify` or a short cluster carrying `n` (`-n`, `-nm`,
-`-anm`), output piped into `tail`/`head`, output sent to `/dev/null`.
+`-anm`), output piped into `tail`/`head`, output sent to `/dev/null`. And in
+every repo, with zero protected roots, it denies `git worktree add` onto tmpfs
+(`/tmp`, `/dev/shm`, `/run`): that working tree disappears on reboot with every
+uncommitted change in it. The typed destination is matched against the literal
+prefixes and its realpath against theirs (a symlinked `/tmp` still denies);
+`~` and `$VAR` are expanded first, and a path still starting with an unknown
+variable is allowed. Values of `-b`, `-B` and `--reason` are never taken for
+the destination. The reason names a durable spot such as `~/worktrees/<name>`.
 
 Each shell segment is tokenized with `shlex`, the `git` token is located past
 `env`, `sudo`, `timeout N` and `VAR=val` prefixes, `-C`, `--git-dir`,
@@ -37,6 +44,8 @@ The only place to stop both is the tool call.
 :                                 : payload reader (fails closed on bad JSON), :
 :                                 : watchdog (fails open on time), denial log  :
 :                                 : (`PAWL_DATA/denials.jsonl`), and a CLI.    :
+| `worktree_tmpfs.py`             | `reason(args, base)`: the tmpfs rule for   |
+:                                 : `git worktree add`.                        :
 | `destructive_git_guard_hook.py` | PreToolUse hook. Reads the tool call JSON  |
 :                                 : on stdin and prints `{"decision"\:         :
 :                                 : "allow"}` or `{"decision"\: "deny",        :
@@ -47,11 +56,15 @@ The only place to stop both is the tool call.
 :                                 : roots, the git-toplevel default (real `git :
 :                                 : init`), the commit rules, hook decisions   :
 :                                 : and denial rows, CLI exit codes.           :
+| `test_worktree_tmpfs.py`        | 23 tests: each tmpfs prefix, option        |
+:                                 : skipping, relative/`cd`/`-C` bases, `~`    :
+:                                 : and `$VAR` expansion, symlinks, zero       :
+:                                 : roots, CLI and hook decisions.             :
 
 ## Run it
 
 ```bash
-python3 -m pytest -q test_destructive_git_guard.py
+python3 -m pytest -q .
 python3 destructive_git_guard.py check --cwd /path/to/repo git reset --hard
 python3 destructive_git_guard.py roots --cwd /path/to/repo
 ```

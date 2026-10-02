@@ -25,7 +25,7 @@ merely mentions a send tool.
 
 | # | Gate | Input | Fails |
 |---|---|---|---|
-| 1 | egress firewall | outbound text only: values of `--text --message --body --subject --title --to --cc --bcc --space --user -m`, heredoc bodies, and the contents of files read via `$(cat F)` or `$(< F)`; any other `$(...)` or backtick in a value is a deny; no extractable payload falls back to the whole command line | closed |
+| 1 | egress firewall | outbound text only: values of `--text --message --body --subject --title --to --cc --bcc --space --user -m`, heredoc bodies, and the contents of files read via `$(cat F)` or `$(< F)` (quotes around F stripped, so `> "F"` pairs with `$(cat 'F')`); any other `$(...)` or backtick in a value is a deny, but shell syntax inside F is text; no extractable payload falls back to the whole command line | closed |
 | 2 | prose gate | longest quoted string, only when 40+ words, plane `chat` | open |
 | 3 | send budget | one unit on the channel for the local day | open |
 

@@ -13,7 +13,8 @@ Only command lines that look like a send (chat, mail, social) are gated.
 Everything else is allowed without touching any state. For a send, the order
 is:
 
-    1. egress firewall   fails closed: a broken rules file blocks the send
+    1. egress firewall   fails closed: a broken rules file blocks the send;
+                         scans only the outbound payload (egress_payload.py)
     2. prose gate        fails open:  scores the longest quoted string when it
                                       is long enough
     3. send budget       fails open:  spends one unit per channel per local day
@@ -33,11 +34,10 @@ import json
 import os
 from pathlib import Path  # pylint: disable=g-importing-member
 import re
-import shlex
 import shutil
 import sys
 import time
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Optional, Set, Tuple
 
 HERE = Path(__file__).resolve().parent
 PIECES = HERE.parent / "pieces"
@@ -46,6 +46,7 @@ for sub in ("send-budget", "egress-firewall", "prose-gate"):
 
 # pylint: disable=g-import-not-at-top
 import egress_firewall  # noqa: E402
+import egress_payload  # noqa: E402
 import prose_gate  # noqa: E402
 import send_budget  # noqa: E402
 
@@ -111,115 +112,12 @@ def longest_quoted(command: str) -> str:
   return best
 
 
-_PAYLOAD_FLAGS = frozenset({
-    "--text", "--message", "--body", "--subject", "--title", "--to", "--cc",
-    "--bcc", "--space", "--user", "-m",
-})
-_HEREDOC = re.compile(
-    r"<<-?\s*(['\"]?)(\w+)\1([^\n]*)\n(.*?)^\2[ \t]*$", re.S | re.M
-)
-_REDIRECT_TARGET = re.compile(r">>?\s*([^\s;|&]+)")
-_FILE_READ = re.compile(r"\$\(\s*(?:cat\s+|<\s*)([^\s)]+)\s*\)")
-_OPAQUE = re.compile(r"\$\(|`")
-
-
-class OpaqueSubstitutionError(Exception):
-  """A message value embeds a command whose output is unknown at hook time."""
-
-
-def heredocs(command: str) -> Dict[str, str]:
-  """Collects heredoc bodies from a command.
-
-  Args:
-    command: the shell command line.
-
-  Returns:
-    Heredoc bodies keyed by the file they are redirected into ("" if none).
-  """
-  found: Dict[str, str] = {}
-  for m in _HEREDOC.finditer(command):
-    target = _REDIRECT_TARGET.search(m.group(3))
-    key = os.path.expanduser(target.group(1)) if target else ""
-    found[key] = found.get(key, "") + m.group(4)
-  return found
-
-
-def payload_values(command: str) -> List[str]:
-  """Collects the values of send flags from a command.
-
-  Args:
-    command: the shell command line.
-
-  Returns:
-    Values given as `--text hi` or `--text=hi`, heredoc bodies removed.
-  """
-  stripped = _HEREDOC.sub("<<HEREDOC", command)
-  try:
-    tokens = shlex.split(stripped)
-  except ValueError:
-    tokens = stripped.split()
-  values = []
-  for i, tok in enumerate(tokens):
-    if tok in _PAYLOAD_FLAGS and i + 1 < len(tokens):
-      values.append(tokens[i + 1])
-    elif "=" in tok and tok.split("=", 1)[0] in _PAYLOAD_FLAGS:
-      values.append(tok.split("=", 1)[1])
-  return values
-
-
-def resolve_file_reads(value: str, written: Dict[str, str]) -> str:
-  """Replaces $(cat FILE) and $(< FILE) in a flag value with the file text.
-
-  Args:
-    value: one send-flag value.
-    written: heredoc bodies keyed by the file the same command writes them
-      to; a read of such a file resolves to that body.
-
-  Returns:
-    The value with file reads expanded.
-
-  Raises:
-    OpaqueSubstitutionError: a `$(...)` or backtick remains after expansion.
-    OSError: a read file does not exist or cannot be read.
-  """
-
-  def read(m: "re.Match[str]") -> str:
-    path = os.path.expanduser(m.group(1))
-    if path in written:
-      return written[path]
-    return Path(path).read_text(encoding="utf-8")
-
-  resolved = _FILE_READ.sub(read, value)
-  if _OPAQUE.search(resolved):
-    raise OpaqueSubstitutionError(resolved.strip()[:60])
-  return resolved
-
-
-def outbound_text(command: str) -> str:
-  """Extracts the text a send would put on the wire.
-
-  Collected: send-flag values, heredoc bodies, and the contents of files a
-  value reads with $(cat FILE) or $(< FILE). Tool paths, redirects and pipes
-  never leave the machine, so they are not part of the scanned text.
-
-  Args:
-    command: the shell command line.
-
-  Returns:
-    The outbound text, or the whole command when nothing could be extracted.
-  """
-  docs = heredocs(command)
-  parts = [resolve_file_reads(v, docs) for v in payload_values(command)]
-  parts += list(docs.values())
-  return "\n".join(parts) if parts else command
-
-
 def gate_egress(command: str) -> str:
   """Returns a deny reason or an empty string. Any failure is a deny."""
   try:
     rules = egress_firewall.load_rules(str(rules_path()))
-    hits = egress_firewall.scan(outbound_text(command), rules)
-  except OpaqueSubstitutionError as exc:
+    hits = egress_firewall.scan(egress_payload.outbound_text(command), rules)
+  except egress_payload.OpaqueSubstitutionError as exc:
     return (
         "[PAWL egress] command substitution in message text cannot be"
         f" scanned before it runs: {exc}"

@@ -17,6 +17,8 @@ invocation, resolves the repo it targets, and denies when:
   commit      `--no-verify` or a short cluster carrying `n` (`-n`, `-nm`,
               `-anm`); output piped into `tail`/`head`; output sent to
               `/dev/null`. Applies in every repo.
+  worktree    `add` onto tmpfs (/tmp, /dev/shm, /run). Applies in every repo;
+              see worktree_tmpfs.py.
 
 Protected roots come from PAWL_GIT_PROTECTED_ROOTS (colon-separated). When
 unset, the guard protects the git toplevel of the tool call's working
@@ -54,6 +56,8 @@ import subprocess
 import sys
 import time
 from typing import Any, Dict, List, Optional, Tuple
+
+import worktree_tmpfs
 
 HOOK_NAME = "destructive_git_guard"
 GATE = "DESTRUCTIVE_GIT"
@@ -389,10 +393,6 @@ def scan(command: str, cwd: str, roots: Optional[List[str]] = None) -> str:
   commit = unsafe_commit_reason(command)
   if commit:
     return f"[DESTRUCTIVE GIT] {commit}"
-  if roots is None:
-    roots = protected_roots(cwd)
-  if not roots:
-    return ""
   segments = _split_segments(command)
   for idx, segment in enumerate(segments):
     if "git" not in segment:
@@ -402,6 +402,12 @@ def scan(command: str, cwd: str, roots: Optional[List[str]] = None) -> str:
     if gi < 0:
       continue
     subcmd, rest, explicit = _parse_git(tokens, gi, cwd)
+    seg_cwd = _effective_cwd(segments, idx, cwd)
+    if subcmd == "worktree":  # destination rule, no protected root needed
+      tmpfs = worktree_tmpfs.reason(rest, explicit or seg_cwd)
+      if tmpfs:
+        return f"[DESTRUCTIVE GIT] {tmpfs}"
+      continue
     if (
         subcmd is None
         or subcmd in READ_ONLY_SUBCOMMANDS
@@ -411,7 +417,8 @@ def scan(command: str, cwd: str, roots: Optional[List[str]] = None) -> str:
     reason = destructive_reason(subcmd, rest)
     if not reason:
       continue
-    seg_cwd = _effective_cwd(segments, idx, cwd)
+    if roots is None:
+      roots = protected_roots(cwd)
     for root in roots:
       if _targets_root(rest, seg_cwd, explicit, root):
         return (
