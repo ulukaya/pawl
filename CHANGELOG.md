@@ -87,6 +87,11 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
 *   `PRIVACY.md`: every file pawl reads and writes, and the one place it
     loosens a harness default.
 *   `.githooks/pre-push` runs `check_portable.py` and the battery.
+*   `eval/claude_agent.sh`: the Claude Code agent for `run_arms.sh`, with a
+    spend and turn cap per run, user settings skipped on both arms, and each
+    session's events saved to the run directory. `eval/usage_table.py`
+    prints turns, tokens and cost per arm, projects the full suite's cost,
+    and flags a capped run or an arm that loaded the wrong plugins.
 *   `eval/claude/`: four cases for Claude Code's `claude plugin eval`, graded
     by regex, `tool_used` and `file_exists` only, with grader twins in the
     battery.

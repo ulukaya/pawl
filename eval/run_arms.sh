@@ -4,7 +4,8 @@
 # For each pass (PAWL_EVAL_PASSES, default 3), each arm (on, then off) and
 # each case, sequentially: build a fresh fixture, run the agent once, grade
 # the run with validate.py, and append {pass, arm, case, rc} to results.jsonl.
-# Then print the results table.
+# Then print the results table, and with claude_agent.sh as the agent, what
+# the run cost (usage_table.py).
 #
 # The agent is PAWL_EVAL_AGENT, run as:
 #   $PAWL_EVAL_AGENT <workdir> <prompt-file> <plugin-dir>
@@ -81,4 +82,7 @@ for pass in $(seq 1 "$PASSES"); do
 done
 
 python3 -B "$HERE/results_table.py" "$OUT/results.jsonl"
+if compgen -G "$OUT/runs/*/*/*/stream.jsonl" > /dev/null; then
+  python3 -B "$HERE/usage_table.py" "$OUT" || true
+fi
 echo "results: $OUT/results.jsonl"

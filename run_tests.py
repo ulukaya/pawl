@@ -22,6 +22,7 @@ SUITES = (
         ROOT / "test_check_contract.py",
         ROOT / "test_install.py",
         ROOT / "eval" / "fixtures" / "test_validate.py",
+        ROOT / "eval" / "test_usage_table.py",
         ROOT / "eval" / "claude" / "test_cases.py",
         ROOT / "eval" / "blast-compare" / "test_compare.py",
     ]  # root tools and the grader twins: one file each, no recursion
