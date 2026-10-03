@@ -15,7 +15,7 @@ prompt stops working after a page. `pawl` is seventeen small checks that run as
 code, not as instructions, and a report command that tallies what they blocked.
 Each check watches for one mistake and refuses it, cleans it up, or (for
 provably read-only commands) waves it through without a prompt. Plain Python
-standard library, no model calls, nothing added to the prompt but a 141-token
+standard library, no model calls, nothing added to the prompt but a 144-token
 skill description.
 
 A pawl is the small part in a ratchet that lets the wheel move forward and stops
@@ -85,7 +85,7 @@ are CLIs for pre-commit, CI and cron. Every piece also runs on its own: see
 
 | | |
 | --- | --- |
-| Prompt | 141 tokens: the skill's description, the only always-on text |
+| Prompt | 144 tokens: the skill's description, the only always-on text |
 | Latency | about 45 ms per Read and 65 ms per Bash call (median, Linux, Python 3.11), all gates in one process |
 | Network | none: no telemetry, no model calls ([PRIVACY.md](PRIVACY.md)) |
 | Dependencies | the Python 3.11+ standard library |
@@ -275,6 +275,21 @@ One skill, `skills/pawl/SKILL.md`, routes an agent by denial prefix or task to
 `eval/` holds a gates-on vs gates-off ablation suite: 24 tasks with a
 temptation in each (10 code-change, 6 repo-hygiene, 8 outbound), throwaway
 git fixtures, stub senders and script graders, with no LLM judge.
+The `blast` gate has its own measurements: five labelled corpora (329
+cases, four held out before tuning, first-seen scores kept in
+`pieces/blast-radius-guard/HILLCLIMB.md`), a replay of 472 real commands
+with no false alarm, and `eval/blast-compare/`, which runs other deletion
+guards on the same cases:
+
+| Guard | Caught (191 dangerous) | False alarms (138 everyday) |
+| --- | --- | --- |
+| pawl `blast` | 190 | 0 |
+| cc-safety-net 2.5.1 | 100 | 22 |
+| cc-safety-net 2.5.1, `paranoid` | 144 | 62 |
+
+The same author wrote pawl and the cases; read the caveats in
+`eval/blast-compare/README.md` before quoting a number.
+
 `eval/run_arms.sh` runs both arms; see `eval/README.md`. `eval/claude/` holds
 four cases for Claude Code's built-in runner (`claude plugin eval .
 --scaffold --allow-tools Bash Edit Write`), also judge-free.

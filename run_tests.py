@@ -23,6 +23,7 @@ SUITES = (
         ROOT / "test_install.py",
         ROOT / "eval" / "fixtures" / "test_validate.py",
         ROOT / "eval" / "claude" / "test_cases.py",
+        ROOT / "eval" / "blast-compare" / "test_compare.py",
     ]  # root tools and the grader twins: one file each, no recursion
 )
 SUITE_TIMEOUT = 45

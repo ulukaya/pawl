@@ -84,7 +84,7 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
     battery.
 *   `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, issue forms
     (bug, false positive, gate request) and a pull request template.
-*   README: badges and a "What it costs" table (141 prompt tokens, about 45
+*   README: badges and a "What it costs" table (144 prompt tokens, about 45
     to 65 ms per call, no network); a social preview image for the
     repository's card.
 *   The README shows the logo with Markdown image syntax, which the plugin
@@ -108,7 +108,7 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
 *   The ten per-gate hook scripts and `pawl_harness.py` are replaced by the
     dispatcher; `pawl_hook.py` is now `send_gates.py` and `pawl_hook.py
     stats` is `pawl.py stats`.
-*   The skill description fits the 150-token budget (141 tokens).
+*   The skill description fits the 150-token budget (144 tokens).
 *   A hook call costs about a third less (Bash 92 to 63 ms, Read 76 to
     48 ms): modules compile once into `PAWL_DATA/pycache`, and the hot path
     no longer imports `dataclasses` or `argparse`.
