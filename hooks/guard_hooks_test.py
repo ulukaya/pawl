@@ -25,7 +25,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 GROUPS = {
     "pawl-noop-edit-guard": (
-        "replace_file_content|multi_replace_file_content",
+        "write_to_file|replace_file_content|multi_replace_file_content",
         "noop",
     ),
     "pawl-zero-width-sanitizer": (

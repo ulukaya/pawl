@@ -145,7 +145,7 @@ GATES: Tuple[Gate, ...] = (
          pre=_guard("[PAWL git]", "git"), fail_closed=True),
     Gate("poll", "poll-loop-guard", "poll_loop_guard", SHELL,
          pre=_guard("[PAWL poll]", "poll"), fail_closed=True),
-    Gate("noop", "noop-edit-guard", "noop_edit_guard", EDITS,
+    Gate("noop", "noop-edit-guard", "noop_edit_guard", WRITES,
          pre=_decide("noop")),
     Gate("zero-width", "zero-width-sanitizer", "zero_width_sanitizer", WRITES,
          pre=_zero_width),

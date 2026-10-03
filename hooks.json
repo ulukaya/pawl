@@ -70,7 +70,7 @@
     "enabled": true,
     "PreToolUse": [
       {
-        "matcher": "replace_file_content|multi_replace_file_content",
+        "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
         "hooks": [
           {
             "type": "command",

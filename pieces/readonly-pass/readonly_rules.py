@@ -23,10 +23,13 @@ class Flags(NamedTuple):
 
 
 SIMPLE_READERS = frozenset({
-    "basename", "cat", "cd", "dirname", "du", "echo", "egrep", "fgrep",
-    "grep", "head", "ls", "pwd", "readlink", "realpath", "stat", "tail", "wc",
+    "arch", "basename", "cat", "cd", "cut", "dirname", "du", "echo", "egrep",
+    "fgrep", "grep", "head", "jq", "ls", "pwd", "readlink", "realpath",
+    "stat", "tail", "tr", "type", "uname", "wc", "which",
 })
 FLAGGED_READERS: Dict[str, Flags] = {
+    # -l / --paginate pipes the output through `pr`, another program.
+    "diff": Flags("l", ("--paginate",), "CUIFxXSDLW"),
     "sort": Flags("o", ("--output", "--compress-program"), "kStT"),
     "rg": Flags(
         "z", ("--pre", "--search-zip", "--hostname-bin"), "efgrtTABCmMjE"

@@ -19,6 +19,9 @@ invocation, resolves the repo it targets, and denies when:
               `/dev/null`. Applies in every repo.
   worktree    `add` onto tmpfs (/tmp, /dev/shm, /run). Applies in every repo;
               see worktree_tmpfs.py.
+  push        `--force`, a `+` refspec, `--delete`, `--mirror`, `--prune`;
+  branch      `-D`, `-f`, `-M`, `-C`. Both apply in every repo; see
+              history_guard.py.
 
 Protected roots come from PAWL_GIT_PROTECTED_ROOTS (colon-separated). When
 unset, the guard protects the git toplevel of the tool call's working
@@ -65,6 +68,7 @@ from git_parse import (
     _tokenize,
     protected_roots,
 )
+import history_guard
 import worktree_tmpfs
 
 HOOK_NAME = "destructive_git_guard"
@@ -170,6 +174,9 @@ def scan(command: str, cwd: str, roots: Optional[List[str]] = None) -> str:
       if tmpfs:
         return f"[DESTRUCTIVE GIT] {tmpfs}"
       continue
+    history = history_guard.reason(subcmd or "", rest)
+    if history:  # shared refs: no protected root needed
+      return f"[DESTRUCTIVE GIT] {history}"
     if (
         subcmd is None
         or subcmd in READ_ONLY_SUBCOMMANDS

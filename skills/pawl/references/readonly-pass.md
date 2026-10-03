@@ -10,7 +10,8 @@ Gate `readonly` of `hooks/pawl.py`, on shell commands. Answers
 `auto_approve` (Claude Code: `permissionDecision: allow`; Codex hooks cannot
 approve, so nothing) when every clause only reads: `ls`, `cat`, `head`,
 `tail`, `wc`, `grep`, `rg`, `find` without `-exec`/`-delete`,
-`sed -n '<N>,<M>p'`, `sort`, `uniq`, `tree`, `file`, `echo`, `cd`, and the
+`sed -n '<N>,<M>p'`, `sort`, `uniq`, `tree`, `file`, `jq`, `cut`, `tr`,
+`diff` without `-l`, `which`, `type`, `uname`, `arch`, `echo`, `cd`, and the
 read-only subcommands of `git`, `hg`, `jj` and `g4`. Anything unprovable gets
 `allow`, so the host prompts as usual. Never denies or asks; any other hook's
 deny, force_ask or ask still wins.

@@ -2,9 +2,9 @@
 """Tests for readonly_pass.py, readonly_rules.py and readonly_pass_hook.py.
 
 APPROVE must come back read-only, PROMPT must not. Most PROMPT rows sit one
-flag, operator or quote away from an APPROVE row; the review findings of CL
-987874058 (sort --compress-program, `> 1`, VCS global options, `uniq - out`,
-quoted secret paths, jj --config-file) each have rows here.
+flag, operator or quote away from an APPROVE row; earlier review findings
+(sort --compress-program, `> 1`, VCS global options, `uniq - out`, quoted
+secret paths, jj --config-file) each have rows here.
 
 Run: python3 -m pytest -q test_readonly_pass.py
 """
@@ -90,6 +90,18 @@ APPROVE = [
     "git status; git log -1",
     "git status && git diff",
     "ls;",
+    "jq .name package.json",
+    "jq -r '.dependencies | keys[]' package.json",
+    "cat a.json | jq .",
+    "cut -d, -f1 data.csv",
+    "tr a-z A-Z < names.txt",
+    "diff -u a.py b.py",
+    "diff -rq src/ dist/",
+    "diff -U3 -x '*.pyc' old/ new/",
+    "which python3",
+    "type ls",
+    "uname -a",
+    "arch",
 ]
 
 PROMPT = [
@@ -234,6 +246,13 @@ PROMPT = [
     "sudo ls",
     "bash -c ls",
     "xargs cat",
+    "jq . a.json > out.json",
+    "cut -f1 a.tsv > b.tsv",
+    "diff -l a.py b.py",
+    "diff --paginate a.py b.py",
+    "diff -ul a.py b.py",
+    "which python3 && rm -rf build",
+    "uname -a; touch x",
 ]
 
 

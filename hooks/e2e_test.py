@@ -124,6 +124,14 @@ class ClaudeCodeTest(HarnessCase):
     self.assertEqual(spec["permissionDecision"], "ask")
     self.assertTrue(spec["permissionDecisionReason"].startswith("[PAWL git]"))
 
+  def test_force_push_and_unmerged_branch_delete_ask_the_user(self) -> None:
+    for cmd in ("git push --force origin main", "git branch -D feature"):
+      spec = self.pre("Bash", {"command": cmd})
+      self.assertEqual(spec["permissionDecision"], "ask", cmd)
+      self.assertTrue(spec["permissionDecisionReason"].startswith(
+          "[PAWL git] [DESTRUCTIVE GIT] `git "), cmd)
+    self.assertIsNone(self.pre("Bash", {"command": "git push origin main"}))
+
   def test_poll_loop_asks_the_user(self) -> None:
     spec = self.pre("Bash", {"command": "tail -f server.log"})
     self.assertEqual(spec["permissionDecision"], "ask")
@@ -139,6 +147,17 @@ class ClaudeCodeTest(HarnessCase):
     self.assertIn("new_string equals old_string", reason)
     self.assertNotIn("view_file", reason)
     self.assertNotIn("TargetContent", reason)
+
+  def test_rewriting_a_file_with_its_own_bytes_is_denied(self) -> None:
+    target = self.project / "app.py"
+    target.write_text("x = 1\n")
+    spec = self.pre("Write", {"file_path": str(target), "content": "x = 1\n"})
+    self.assertEqual(spec["permissionDecision"], "deny")
+    reason = spec["permissionDecisionReason"]
+    self.assertTrue(reason.startswith("[PAWL no-op] Write on app.py:"))
+    self.assertIn("Read it", reason)
+    self.assertIsNone(self.pre("Write", {"file_path": str(target),
+                                         "content": "x = 2\n"}))
 
   def test_zero_width_write_is_rewritten_without_approval(self) -> None:
     spec = self.pre("Write", {"file_path": "/app/x.py",

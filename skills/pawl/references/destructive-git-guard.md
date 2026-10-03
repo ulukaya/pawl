@@ -10,6 +10,12 @@ Gate `git` of `hooks/pawl.py`, on shell commands. A hit asks the user
 (Antigravity `force_ask`, Claude Code `ask`); Codex hooks cannot ask, so
 there it is a deny with the reason.
 
+In every repo it also asks before a force push (`--force`, `-f`,
+`--force-with-lease`, a `+` refspec), a remote delete (`--delete`, `:dst`),
+`push --mirror` or `--prune`, and `git branch -D`, `-f`, `-M` or `-C`. Plain
+`git push`, dry runs and `git branch -d` pass. On a hit, push to a new branch
+or ask the user; never retry with another force spelling.
+
 ## Commands
 
 | Invocation | Effect |

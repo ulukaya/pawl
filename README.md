@@ -58,10 +58,10 @@ reason, `--json` every raw answer.
 
 | The mistake | What pawl does | Gate |
 | --- | --- | --- |
-| Runs `git reset --hard`, `git clean -fdx` or `git commit --no-verify` and loses work | Asks the human first | `git` |
+| Runs `git reset --hard`, `git clean -fdx`, `git commit --no-verify`, `git push --force` or `git branch -D` and loses work | Asks the human first | `git` |
 | Runs `while true; do sleep`, `tail -f` or `sleep 3600` and hangs | Asks the human first | `poll` |
 | Calls the same tool with the same arguments in a loop | Asks before the third identical call | `loop` |
-| Sends an edit whose replacement equals its target | Refuses it and sends the agent back to read | `noop` |
+| Sends an edit whose replacement equals its target, or rewrites a file with the bytes it already holds | Refuses it and sends the agent back to read | `noop` |
 | Writes invisible zero-width characters into a file | Strips them so the write lands clean | `zero-width` |
 | Stalls on a permission prompt for `ls` or `git log` | Approves commands that provably only read | `readonly` |
 | Re-reads its own transcript after every context truncation | Refuses past a per-turn limit | `reread` |

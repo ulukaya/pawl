@@ -13,6 +13,11 @@ and every hunk's old side (context and `-` lines) equals its new side
 (context and `+` lines), compared hunk by hunk so a line moved past context
 is still an edit.
 
+A whole-file write (write_to_file, Claude Code's Write) is a no-op when its
+absolute target already holds exactly those bytes. Files over
+MAX_COMPARE_BYTES are not read; a new file, a relative path or an unreadable
+one is a real write.
+
 Decision on stdout:
 
     {"decision": "allow"}
@@ -54,6 +59,9 @@ REPLACE_TOOL = "replace_file_content"
 MULTI_TOOL = "multi_replace_file_content"
 PATCH_TOOL = "apply_patch"
 CLAUDE_EDIT_TOOLS = frozenset({"Edit", "edit"})
+WRITE_TOOLS = {"write_to_file": ("TargetFile", "CodeContent"),
+               "Write": ("file_path", "content")}
+MAX_COMPARE_BYTES = 1 << 20
 _FILE_OPS = ("*** Add File: ", "*** Delete File: ", "*** Move to: ")
 _UPDATE = "*** Update File: "
 
@@ -133,10 +141,45 @@ def patch_noop_reason(args: Any) -> str:
   )
 
 
+def _on_disk(path: str, content: str) -> bool:
+  """True when the absolute file `path` already holds exactly `content`."""
+  data = content.encode("utf-8")
+  try:
+    p = Path(path)
+    if not p.is_absolute() or not p.is_file():
+      return False
+    size = p.stat().st_size
+    if size != len(data) or size > MAX_COMPARE_BYTES:
+      return False
+    return p.read_bytes() == data
+  except (OSError, ValueError):
+    return False
+
+
+def write_noop_reason(tool: str, args: Any) -> str:
+  path_key, content_key = WRITE_TOOLS[tool]
+  if not isinstance(args, dict):
+    return ""
+  path, content = args.get(path_key), args.get(content_key)
+  if not isinstance(path, str) or not isinstance(content, str):
+    return ""
+  if not _on_disk(path, content):
+    return ""
+  action = "Read" if tool == "Write" else "view_file"
+  return (
+      f"{PREFIX} {tool} on {os.path.basename(path)}: the file already holds"
+      " exactly this content, so the write changes nothing."
+      f" {action} it, find what still differs from what you meant, and"
+      " change that."
+  )
+
+
 def noop_reason(tool: str, args: Any) -> str:
   """Deny reason when every chunk of this edit is a no-op, else ''."""
   if tool == PATCH_TOOL:
     return patch_noop_reason(args)
+  if tool in WRITE_TOOLS:
+    return write_noop_reason(tool, args)
   chunks = _chunks(tool, args)
   if not chunks or not all(_is_noop(c) for c in chunks):
     return ""

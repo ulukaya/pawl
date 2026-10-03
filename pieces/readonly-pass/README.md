@@ -14,7 +14,8 @@ it only over its own default prompt, never over a rule the user configured.
 
 Trusted: `ls`, `cat`, `head`, `tail`, `wc`, `grep`, `rg`, `find` without
 `-exec`/`-delete`/`-fprint`, `sed -n '<N>,<M>p'`, `sort`, `uniq` with at most
-one file, `tree`, `file`, `echo`, `cd`, `pwd`, and the read-only subcommands
+one file, `tree`, `file`, `jq`, `cut`, `tr`, `diff` without `-l`, `which`,
+`type`, `uname`, `arch`, `echo`, `cd`, `pwd`, and the read-only subcommands
 of `git`, `hg`, `jj` and `g4`. Flags that write or run another program are
 caught in long form, as abbreviations (`--compress-prog`) and inside short
 clusters (`sort -uo out`).

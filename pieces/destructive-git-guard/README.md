@@ -21,6 +21,13 @@ prefixes and its realpath against theirs (a symlinked `/tmp` still denies);
 variable is allowed. Values of `-b`, `-B` and `--reason` are never taken for
 the destination. The reason names a durable spot such as `~/worktrees/<name>`.
 
+Also in every repo, because a remote is shared by definition and a branch
+deleted unmerged takes its commits with it: a `git push` that force-pushes
+(`--force`, `-f` in any cluster, `--force-with-lease`, a `+src:dst`
+refspec), deletes a remote ref (`--delete`, `-d`, a `:dst` refspec) or runs
+with `--mirror` or `--prune`, unless it is a dry run; and a `git branch -D`,
+`-d --force`, `-f`, `-M` or `-C`. Plain `git push` and `git branch -d` pass.
+
 Each shell segment is tokenized with `shlex`, the `git` token is located past
 `env`, `sudo`, `timeout N` and `VAR=val` prefixes, `-C`, `--git-dir`,
 `--work-tree` and an earlier `cd X` decide which repo is targeted, and quoted
@@ -46,6 +53,8 @@ The only place to stop both is the tool call.
 :                                 : (`PAWL_DATA/denials.jsonl`), and a CLI.    :
 | `worktree_tmpfs.py`             | `reason(args, base)`: the tmpfs rule for   |
 :                                 : `git worktree add`.                        :
+| `history_guard.py`              | `reason(subcmd, args)`: the push and       |
+:                                 : branch rules.                              :
 | `destructive_git_guard_hook.py` | PreToolUse hook. Reads the tool call JSON  |
 :                                 : on stdin and prints `{"decision"\:         :
 :                                 : "allow"}` or `{"decision"\: "deny",        :
@@ -60,6 +69,9 @@ The only place to stop both is the tool call.
 :                                 : skipping, relative/`cd`/`-C` bases, `~`    :
 :                                 : and `$VAR` expansion, symlinks, zero       :
 :                                 : roots, CLI and hook decisions.             :
+| `test_history_guard.py`         | 47 tests: each force, delete, mirror and   |
+:                                 : prune form, each branch form, and the      :
+:                                 : safe twins (plain push, dry runs, `-d`).   :
 
 ## Run it
 

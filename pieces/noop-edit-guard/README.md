@@ -8,8 +8,10 @@ system.
 
 Denies a `replace_file_content` whose `ReplacementContent` equals its
 `TargetContent`, and a `multi_replace_file_content` where every chunk is such
-a no-op. Equality is exact, so a whitespace change is a real edit. The reason
-starts with `[PAWL no-op]` and sends the agent back to `view_file`. Each deny
+a no-op. Equality is exact, so a whitespace change is a real edit. It also
+denies a `write_to_file` (Claude Code: `Write`) whose absolute target already
+holds exactly those bytes, comparing files up to 1 MiB. The reason starts
+with `[PAWL no-op]` and sends the agent back to `view_file`. Each deny
 lands as one row in `PAWL_DATA/denials.jsonl` with gate `NOOP_EDIT` and the
 sha1 of the target path.
 
@@ -26,6 +28,7 @@ first one sends it back to the step it skipped: reading the file.
 | `noop_edit_guard.py` | Rule, payload reader, denial log, watchdog, CLI. |
 | `noop_edit_guard_hook.py` | PreToolUse hook; prints allow or deny. |
 | `test_noop_edit_guard.py` | 24 tests: each deny next to its allow twin, hook fail-open paths, CLI exit codes. |
+| `test_write_noop.py` | 6 tests: whole-file writes against the bytes on disk, with their allow twins. |
 
 ## Run it
 
@@ -50,7 +53,7 @@ session. The rest of this page is for running the piece on its own.
     "enabled": true,
     "PreToolUse": [
       {
-        "matcher": "replace_file_content|multi_replace_file_content",
+        "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
         "hooks": [
           {"type": "command", "command": "python3 /path/to/noop_edit_guard_hook.py", "timeout": 15}
         ]

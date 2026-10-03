@@ -27,16 +27,16 @@ Each arrow names the page to read under `references/` beside this file.
 -   Send (chat, mail, social post): gate `send`, egress then prose then
     budget -> `send-gates.md`
 -   Destructive `git` in a protected repo, `git commit -n`, a worktree on
-    tmpfs: gate `git` asks; by hand `destructive_git_guard.py check` ->
-    `destructive-git-guard.md`
+    tmpfs, a force push, `git branch -D`: gate `git` asks; by hand
+    `destructive_git_guard.py check` -> `destructive-git-guard.md`
 -   Poll loop, `tail -f`, `watch`, `sleep` over 600 s: gate `poll` asks; by
     hand `poll_loop_guard.py classify` -> `poll-loop-guard.md`
 -   Turn end with background waits still running: gate `idle` blocks once ->
     `idle-task-gate.md`
 -   Same tool call 3 times, or 2-3 calls alternating: gate `loop` asks ->
     `oscillation-breaker.md`
--   Edit whose replacement equals its target: gate `noop` denies ->
-    `noop-edit-guard.md`
+-   Edit whose replacement equals its target, or a write of the bytes
+    already on disk: gate `noop` denies -> `noop-edit-guard.md`
 -   Invisible characters in a write: gate `zero-width` strips them ->
     `zero-width-sanitizer.md`
 -   Read-only shell command: gate `readonly` approves; by hand

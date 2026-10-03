@@ -81,6 +81,15 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
     repository's card.
 *   The README shows the logo with Markdown image syntax, which the plugin
     directory's checks expect.
+*   The `git` gate asks before a force push (`--force`, `-f`,
+    `--force-with-lease`, a `+` refspec), a remote delete (`--delete`, a
+    `:dst` refspec), `push --mirror` or `--prune`, and `git branch -D`,
+    `-f`, `-M` or `-C`, in every repo; plain pushes, dry runs and
+    `git branch -d` pass.
+*   readonly-pass trusts `jq`, `cut`, `tr`, `diff` (not `-l`, which runs
+    `pr`), `which`, `type`, `uname` and `arch`.
+*   The `noop` gate refuses a whole-file write (`write_to_file`, Claude
+    Code's `Write`) of the bytes the file already holds.
 *   `pawl.py demo`: ten canned calls through the real dispatcher in all
     three harnesses' shapes, printed as a decision matrix (`--verbose`,
     `--json`); runs in a scratch tree, ignores the user's settings.
