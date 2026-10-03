@@ -14,6 +14,7 @@ Run on 2026-10-03, Linux, each guard at its default level unless named:
 | pawl `blast` gate | 190 (99.5%) | 0 |
 | cc-safety-net 2.5.1 | 100 (52.4%) | 22 (15.9%) |
 | cc-safety-net 2.5.1, `paranoid` | 144 (75.4%) | 62 (44.9%) |
+| dcg 0.15.2 | 156 (81.7%) | 61 (44.2%) |
 
 ## Read this before quoting it
 
@@ -32,15 +33,22 @@ Run on 2026-10-03, Linux, each guard at its default level unless named:
 *   **Scope.** cc-safety-net reads inline code (`bash -c`, `python -c`) but
     not script files, package scripts or Makefiles, which is where most of
     its misses sit; it also covers secrets and other guards pawl leaves to
-    other gates.
+    other gates. dcg states that it does not scan script files: 33 of its
+    35 misses are a script, package script, Makefile, justfile or code file
+    (the other two are `npx rimraf ~` and `cmd /c rmdir`). Its default asks
+    a human about every `rm -rf`, even `rm -rf node_modules`, which is most
+    of its 61 false alarms; that is a deliberate trade, and its packs cover
+    databases, clouds and Kubernetes, which these cases do not test.
 
 ## Run it
 
 ```bash
 npm install cc-safety-net
+cargo install --git https://github.com/Dicklesworthstone/destructive_command_guard destructive_command_guard
 python3 eval/blast-compare/compare.py \
   --guard "pawl=python3 -B hooks/pawl.py pre --only blast --harness claude" \
   --guard "ccsn=node node_modules/cc-safety-net/dist/bin/cc-safety-net.js hook --claude-code" \
+  --guard "dcg=$HOME/.cargo/bin/dcg" \
   --verbose
 ```
 

@@ -286,6 +286,7 @@ guards on the same cases:
 | pawl `blast` | 190 | 0 |
 | cc-safety-net 2.5.1 | 100 | 22 |
 | cc-safety-net 2.5.1, `paranoid` | 144 | 62 |
+| dcg 0.15.2 | 156 | 61 |
 
 The same author wrote pawl and the cases; read the caveats in
 `eval/blast-compare/README.md` before quoting a number.
