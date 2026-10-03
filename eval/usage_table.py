@@ -8,7 +8,8 @@ both arms, --passes passes) would cost at those means.
 
 A run is flagged when:
   - it has no result event: the session died or never started;
-  - it stopped early: the turn cap, the spend cap or an error;
+  - it stopped early: the turn cap, the spend cap, an API error or a
+    refusal;
   - its arm loaded the wrong plugins: pawl missing on the on arm, or loaded
     on the off arm, either of which makes the comparison measure nothing.
 
@@ -104,6 +105,19 @@ def _number(value: Any) -> float:
   return float(value) if isinstance(value, (int, float)) else 0.0
 
 
+def stop_detail(result: Event) -> str:
+  """Why a session ended early ('error_max_turns', 'api_error (refusal)'),
+  or '' for a clean finish. An API error can carry subtype "success"."""
+  subtype = str(result.get("subtype") or "")
+  if subtype and subtype != "success":
+    return subtype
+  if not result.get("is_error"):
+    return ""
+  terminal = str(result.get("terminal_reason") or "error")
+  reason = result.get("stop_reason")
+  return f"{terminal} ({reason})" if reason else terminal
+
+
 def read_run(path: Path, label: str, arm: str) -> Run:
   """One run from its stream.jsonl."""
   init, result = split(events(path))
@@ -112,9 +126,9 @@ def read_run(path: Path, label: str, arm: str) -> Run:
   if result is None:
     flags.append("no result event: the session died or never started")
     return Run(label, arm, model, 0, 0.0, (0,) * len(TOKENS), tuple(flags))
-  subtype = str(result.get("subtype") or "")
-  if subtype != "success" or result.get("is_error"):
-    flags.append(f"stopped: {subtype or 'error'}")
+  stop = stop_detail(result)
+  if stop:
+    flags.append(f"stopped: {stop}")
   usage = result.get("usage")
   usage = usage if isinstance(usage, dict) else {}
   tokens = tuple(int(_number(usage.get(key))) for _, key in TOKENS)

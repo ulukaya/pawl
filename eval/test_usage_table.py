@@ -117,6 +117,13 @@ class TableTest(Base):
     self.assertEqual(self.flags()["1/on/case_a"],
                      ("stopped: error_max_turns",))
 
+  def test_api_refusal_reported_as_success_is_flagged(self) -> None:
+    refused = {**result(), "is_error": True, "terminal_reason": "api_error",
+               "stop_reason": "refusal"}
+    self.plant("1/on/case_a", init(PAWL), refused)
+    self.assertEqual(self.flags()["1/on/case_a"],
+                     ("stopped: api_error (refusal)",))
+
   def test_session_with_no_result_is_flagged_and_costs_nothing(self) -> None:
     self.plant("1/off/case_a", "claude: unknown option", init([]))
     run = usage_table.collect(self.tmp)[0]
