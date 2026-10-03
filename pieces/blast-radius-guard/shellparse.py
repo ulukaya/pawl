@@ -36,6 +36,7 @@ _ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "e": "\x1b", "a": "\a",
 class Command(NamedTuple):
   text: str
   heredoc: Optional[str] = None  # body of a `<<WORD` opened by this command
+  heredoc_expands: bool = False  # the `<<WORD` was unquoted: $( ) run in it
 
 
 class Words(NamedTuple):
@@ -145,8 +146,14 @@ def _is_redirect_amp(text: str, i: int, sep: str) -> bool:
   return before in "<>" or (sep == "&" and after == ">")
 
 
-def _take_heredocs(lines: List[str]) -> Tuple[List[str], Dict[int, str]]:
-  """Removes heredoc bodies; maps the opening line's index to its body."""
+def _take_heredocs(
+    lines: List[str]) -> Tuple[List[str], Dict[int, Tuple[str, bool]]]:
+  """Removes heredoc bodies; maps the opening line's index to (body, expands).
+
+  `expands` is True when the delimiter was unquoted (`<<EOF`): a bash heredoc
+  then runs `$( )` and `${ }` in its body. A quoted delimiter (`<<'EOF'`,
+  `<<"EOF"`) is literal.
+  """
   kept, bodies, i = [], {}, 0
   while i < len(lines):
     line = lines[i]
@@ -160,7 +167,7 @@ def _take_heredocs(lines: List[str]) -> Tuple[List[str], Dict[int, str]]:
       body.append(lines[i])
       i += 1
     i += 1  # the terminator line
-    bodies[len(kept) - 1] = "\n".join(body) + "\n"
+    bodies[len(kept) - 1] = ("\n".join(body) + "\n", not m.group(1))
   return kept, bodies
 
 
@@ -172,9 +179,10 @@ def pipelines(text: str) -> List[Pipeline]:
   for idx, line in enumerate(lines):
     current: Pipeline = []
     for chunk, sep in _split_top(line):
-      body = bodies.get(idx) if _HEREDOC_RE.search(chunk) else None
+      pair = bodies.get(idx) if _HEREDOC_RE.search(chunk) else None
+      body, expands = pair if pair else (None, False)
       if chunk.strip():
-        current.append(Command(chunk.strip(), body))
+        current.append(Command(chunk.strip(), body, expands))
       if sep != "|" and current:
         out.append(current)
         current = []
@@ -209,6 +217,48 @@ def _placeholders(text: str) -> Tuple[str, List[str]]:
   return "".join(out), inner
 
 
+_ARGV_BRACE_RE = re.compile(r"\{([^{}]*,[^{}]*)\}")
+
+
+def _brace_words(token: str) -> List[str]:
+  """`{rm,-rf,/}` -> [rm, -rf, /]; `a{b,c}` -> [ab, ac]; one comma group."""
+  m = _ARGV_BRACE_RE.search(token)
+  if not m:
+    return [token]
+  out: List[str] = []
+  for option in m.group(1).split(","):
+    out.extend(_brace_words(token[:m.start()] + option + token[m.end():]))
+  return out
+
+
+def _expand_argv(argv: List[str]) -> List[str]:
+  """Brace expansion over words, with the empty words bash would drop.
+
+  `{,rm} -rf /` becomes `rm -rf /`: brace expansion runs before word
+  splitting, an unquoted empty expansion leaves no word behind. A group that
+  held `$IFS` (already a space here) splits again into words, as bash does
+  after it expands `rm{,$IFS-rf$IFS/}`.
+  """
+  out: List[str] = []
+  for tok in argv:
+    expanded = _brace_words(tok)
+    if expanded == [tok]:
+      out.append(tok)  # no brace: a quoted space in the word is kept
+    else:
+      out.extend(p for w in expanded for p in w.split() if p)
+  return out
+
+
+def substitutions(text: str) -> List[str]:
+  """Bodies of every `$( )`, `<( )` and backtick group in `text`.
+
+  Used to scan an unquoted heredoc body, where these run. A `<( )` body keeps
+  its PROC_MARK so callers can tell process substitution apart.
+  """
+  _, inner = _placeholders(text)
+  return inner
+
+
 def _split_redirects(tokens: List[str]):
   """(argv, write targets): `>`, `2>&1`, `>out`, `2>/dev/null` removed."""
   argv: List[str] = []
@@ -225,6 +275,9 @@ def _split_redirects(tokens: List[str]):
       elif pending.endswith("<") and not pending.startswith("<<"):
         stdin.append(tok)
       pending = ""
+      continue
+    if len(tok) > 3 and tok.startswith("<<<"):  # `<<<'word'` joined by shlex
+      here.append(tok[3:])
       continue
     if _REDIRECT_RE.match(tok):
       if not tok.endswith(("&1", "&2", "-")):
@@ -299,4 +352,4 @@ def words(command: str) -> Words:
   except ValueError:
     tokens = text.split()
   argv, writes, here, stdin = _split_redirects(tokens)
-  return Words(argv, inner, writes, here, stdin)
+  return Words(_expand_argv(argv), inner, writes, here, stdin)

@@ -26,16 +26,17 @@ DELETE_CALLS = {
     "ruby": re.compile(
         r"\bFileUtils\.(?:rm_rf|rm_r|rm|remove_dir|remove_entry"
         r"|remove_entry_secure)\s*\(?"),
-    "perl": re.compile(r"\b(?:rmtree|remove_tree)\s*\(?"),
+    "perl": re.compile(r"\b(?:rmtree|remove_tree|unlink)\s*\(?"),
     "go": re.compile(r"\bos\.(?:RemoveAll|Remove)\s*\("),
 }
 SHELL_OUTS = {
     "python": re.compile(
-        r"\b(?:os\.(?:system|popen)|subprocess\.(?:run|call|check_call"
-        r"|check_output|Popen|getoutput|getstatusoutput))\s*\("),
+        r"\b(?:os\s*\.\s*(?:system|popen)|subprocess\s*\.\s*(?:run|call"
+        r"|check_call|check_output|Popen|getoutput|getstatusoutput))\s*\("),
     "js": re.compile(
         r"\b(?:exec|execSync|spawn|spawnSync|execFile|execFileSync)\s*\("),
-    "ruby": re.compile(r"(?:\bsystem|\bexec|%x)\s*[\(\{]?"),
+    "ruby": re.compile(
+        r"(?:\bsystem|\bexec|\bspawn|IO\.popen|Open3\.\w+|%x)\s*[\(\{]?"),
     "perl": re.compile(r"\b(?:system|exec|qx)\s*[\(\{]?"),
     "go": re.compile(r"\bexec\.Command(?:Context)?\s*\("),
 }

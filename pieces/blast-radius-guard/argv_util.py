@@ -17,11 +17,22 @@ import runs
 
 RUNNERS = frozenset({"npx", "bunx", "pnpx"})
 RUNNER_SUBCMDS = frozenset({"dlx", "exec", "x"})
+# `TOOL run [opts] CMD...`: the real program is after `run`.
+RUN_TOOLS = frozenset({"uv", "poetry", "pipenv", "pdm", "hatch", "conda",
+                       "rye", "mamba", "micromamba"})
+RUN_VALUE_OPTS = frozenset({"-p", "--package", "--with", "-n", "--name",
+                            "--python", "-C", "--directory", "--project"})
 PREFIX_CMDS = frozenset({"sudo", "doas", "command", "builtin", "exec",
                          "nohup", "time", "nice", "ionice", "stdbuf",
-                         "timeout", "env", "caffeinate"})
+                         "timeout", "env", "caffeinate", "busybox", "setsid",
+                         "unbuffer", "chrt", "taskset", "flock", "watch"})
 VALUE_OPTS = {"sudo": "ugCDhpTrt", "doas": "uC", "nice": "n", "ionice": "cnp",
-              "timeout": "sk", "env": "uSC", "stdbuf": "ioe"}
+              "timeout": "sk", "env": "uSC", "stdbuf": "ioe", "taskset": "cp",
+              "watch": "n", "chrt": "T"}
+# One non-command operand that a runner takes before its command.
+_OPERAND_RE = {"timeout": re.compile(r"."), "flock": re.compile(r"."),
+               "chrt": re.compile(r"\d+$"),
+               "taskset": re.compile(r"(?:0x)?[0-9a-fA-F]+$|[\d,-]+$")}
 KEYWORDS = frozenset({"{", "}", "(", ")", "then", "do", "else", "elif", "if",
                       "while", "until", "!", "fi", "done", "esac", "time",
                       "function"})
@@ -42,7 +53,8 @@ def strip_prefixes(argv: List[str]) -> List[str]:
                                                  argv[0])):
       flag = argv[0]
       argv = argv[2:] if flag[1:] and flag[-1] in takes else argv[1:]
-    if name == "timeout" and argv:
+    operand = _OPERAND_RE.get(name)
+    if operand and argv and operand.match(argv[0]):
       argv = argv[1:]
   return argv
 
@@ -66,15 +78,21 @@ def strip_keywords(argv: List[str]) -> List[str]:
 
 
 def runner_argv(argv: List[str]) -> Optional[List[str]]:
-  """`npx rimraf x` -> ['rimraf', 'x']; None when argv is no package runner."""
+  """`npx rimraf x` -> ['rimraf', 'x']; None when argv is no package runner.
+
+  Covers `npx`/`bunx`, `pnpm dlx`, and `uv run`/`poetry run`/`conda run`...,
+  all of which name the real program one or two words in.
+  """
   name = posixpath.basename(argv[0])
   if name in RUNNERS:
     rest = argv[1:]
   elif name in runs.PACKAGE_MANAGERS and len(argv) > 1 and \
       argv[1] in RUNNER_SUBCMDS:
     rest = argv[2:]
+  elif name in RUN_TOOLS and len(argv) > 1 and argv[1] == "run":
+    rest = argv[2:]
   else:
     return None
   while rest and rest[0].startswith("-"):
-    rest = rest[2:] if rest[0] in ("-p", "--package") else rest[1:]
+    rest = rest[2:] if rest[0] in RUN_VALUE_OPTS else rest[1:]
   return rest

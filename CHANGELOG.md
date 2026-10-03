@@ -42,8 +42,16 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
     recipes, Python/JS/Ruby/Perl/Go code and shell-outs, container mounts,
     `cmd /c` and PowerShell, and GuardFall spellings. Home, root, system
     folders, `~/.ssh`-class folders and drives deny; anything else outside
-    the workspace asks. Five labelled corpora (329 cases, four held out
-    before tuning) and a 472-command real-session replay; see HILLCLIMB.md.
+    the workspace asks. Also follows command substitutions (`$( )`, backticks
+    and unquoted heredoc bodies), argv-level brace expansion, more prefixes
+    and runners (`busybox`, `chrt`, `taskset`, `setsid`, `flock`, `watch`,
+    `uv run`/`poetry run`/`conda run`, GNU `parallel`), `fish -c`/`-C`/
+    `--command`, Perl `unlink` and Ruby `spawn`/`IO.popen`/`Open3`, and
+    judges Windows and MSYS paths (`C:\...`, `/c/...`) by place. Five
+    labelled corpora (329 cases, four held out before tuning), a 570-command
+    real-session replay, and a comparison against the cases dcg, shguard and
+    cc-safety-net ship for themselves; see HILLCLIMB.md and
+    eval/blast-compare.
 *   `hooks/pawl.py`: one entry point, `pre` / `stop`, with `--harness` and
     `--only`. Gates run in one process, stop at the first deny, and merge
     deny > ask > approve > allow. `PAWL_DISABLE` takes any gate name.

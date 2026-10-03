@@ -17,7 +17,8 @@ from typing import List
 import argv_util
 import expand
 import shellparse
-from targets import ASK, DENY, classify
+import winpath
+from targets import ALLOW, ASK, DENY, classify
 
 DELETERS = frozenset({"rm", "unlink", "rmdir", "shred", "srm", "rimraf"})
 FIND_DELETE = frozenset({"-delete"})
@@ -45,6 +46,16 @@ class DeleteRules:
   def _delete(self, argv: List[str], w: shellparse.Words, how: str) -> None:
     for target in self._targets(argv[1:], w):
       self._judge(target, how)
+    self._windows_paths(how)
+
+  def _windows_paths(self, how: str) -> None:
+    """Backslash Windows paths a shell would mangle, read from the raw text."""
+    for path in winpath.PATH_RE.findall(how):
+      if "\\" not in path:
+        continue  # forward-slash and MSYS paths come through argv already
+      res = winpath.classify(path)
+      if res and res[0] > ALLOW:
+        self.found(res[0], res[1], how.strip())
 
   def _find(self, argv: List[str], w: shellparse.Words, _before) -> None:
     rest = argv[1:]
@@ -106,8 +117,16 @@ class DeleteRules:
       self._judge(dest.rstrip("/") + "/*", " ".join(argv))
 
   def _dd(self, argv: List[str], w: shellparse.Words, _before) -> None:
-    self._disk([a[3:] for a in argv[1:] if a.startswith("of=")],
-               " ".join(argv))
+    """`of=PATH` is overwritten: a disk is denied, any other path is judged
+    where it lands (so `of=/etc/passwd` is denied, `of=./out.img` allowed)."""
+    how = " ".join(argv)
+    for raw in [a[3:] for a in argv[1:] if a.startswith("of=")]:
+      for target in expand.expand(raw, w.substs, self.ctx):
+        target = re.sub(r"^/{2,}", "/", target)  # //dev/sda -> /dev/sda
+        if DISK_RE.match(target):
+          self.found(DENY, f"the disk {target}", how)
+        else:
+          self._judge(target, how)
 
   def _diskutil(self, argv: List[str], w: shellparse.Words, _before) -> None:
     """macOS `diskutil eraseDisk|eraseVolume|partitionDisk|zeroDisk ...`."""
@@ -119,11 +138,26 @@ class DeleteRules:
       if DISK_RE.match(dev):
         self.found(DENY, f"the disk {dev}", how)
 
-  def _windows(self, text: str) -> None:
+  def _windows(self, text: str, argv: List[str],
+               w: shellparse.Words) -> None:
+    judged = False
+    for path in winpath.PATH_RE.findall(text):
+      res = winpath.classify(path)
+      if res is None:
+        continue
+      judged = True
+      if res[0] > ALLOW:
+        self.found(res[0], res[1], text.strip())
+    if judged:
+      return
     m = WIN_DELETE_RE.match(text)
-    if m and WIN_DANGER_RE.search(m.group(1)):
-      self.found(DENY, "a drive root or the user profile",
-                                   text.strip())
+    if m and WIN_DANGER_RE.search(m.group(1)):  # %USERPROFILE%, $env:..., ~
+      self.found(DENY, "a drive root or the user profile", text.strip())
+      return
+    targets = [a for a in argv[1:]
+               if not a.startswith("-") and not re.match(r"^/[a-zA-Z]$", a)]
+    if targets:  # `Remove-Item build`, `rd /s /q ./out`: judge like any path
+      for target in self._targets(targets, w):
+        self._judge(target, text.strip())
     elif m:
-      self.found(ASK, "a Windows path outside pawl's view",
-                                   text.strip())
+      self.found(ASK, "a Windows path outside pawl's view", text.strip())

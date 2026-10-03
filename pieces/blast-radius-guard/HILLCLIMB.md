@@ -17,6 +17,11 @@ cases asked or denied; `weak` is a deny that came back as an ask.
 | v4 | holdout-4 (39) | 14/17 (82.4%) | 0/22 | 3 | yes |
 | v5 | all five sets (329) | 190/191 | 0/138 | 0 | no |
 | v5 | real session replay (472 commands) | none dangerous | 0/472 | | yes |
+| v6 | all five sets (329) | 190/191 | 0/138 | 0 | no |
+| v6 | real session replay (570 commands) | none dangerous | 0/570 | | yes |
+
+v6 kept every internal number while closing gaps that only another project's
+cases revealed (see below). The one dev miss is still `h4-py-walk-home`.
 
 ## What each round taught
 
@@ -50,6 +55,71 @@ cases asked or denied; `weak` is a deny that came back as an ask.
     after scoring; the case records why.
 *   **holdout-4.** `\$` inside double quotes, `/*/`, `~/**/*`,
     `$(cd ~ && pwd)` and Perl `glob("~")`.
+
+## Iteration 6: scored on other guards' own corpora
+
+The first five sets were all written by pawl's author. To find blind spots,
+v5 was scored against the labelled cases three other deletion guards ship
+for themselves (`../../eval/blast-compare/external.py`): Dicklesworthstone's
+`destructive_command_guard` (dcg), `shguard`, and `cc-safety-net`. Only
+their deletion-related cases are kept. A case they block counts as caught
+when pawl denies or asks; a case they allow counts as agreed when pawl
+allows. First seen, then after the v6 fixes:
+
+| Their corpus | Their blocks pawl caught | Their allows pawl agreed |
+| --- | --- | --- |
+| dcg | 49/78 -> 62/78 | 73/87 -> 82/87 |
+| shguard | 80/125 -> 109/125 | 16/21 -> 16/21 |
+| cc-safety-net | 11/25 -> 15/25 | 10/12 -> 11/12 |
+
+What v6 fixed (each had a known-bad twin added to `test_blast_radius.py`):
+
+*   **Substitutions run.** `$( )`, backticks and `<( )` bodies, and the
+    body of an unquoted heredoc, are scanned as shell: `echo $(rm -rf ~)`,
+    `env -C /tmp/$(rm -rf /) ...`. A single-quoted `$( )` is still inert.
+*   **Brace expansion at the word level.** `{,rm} -rf /` and `{rm,-rf,/}`
+    expand to words as bash does, dropping the empty ones.
+*   **Empty leading words.** `X=; $X rm -rf /` and `''${IFS}rm -rf /`.
+*   **More runners.** `busybox`, `chrt`, `taskset`, `setsid`, `flock`,
+    `watch`, `eval --`, `uv run`/`poetry run`/`conda run`..., and GNU
+    `parallel TEMPLATE ::: args`.
+*   **fish** `-c`/`-C`/`--command`/`--init-command`, with the value
+    attached, clustered, `=`-joined or abbreviated (`--com=`).
+*   **Disks and overwrites.** `dd of=PATH` is judged where PATH lands
+    (`of=/dev/sda` denied, `//dev/sda` normalized); `wipefs` only erases
+    with `-a`/`-o`, so bare `wipefs DEV` is no longer denied.
+*   **More language APIs.** Perl `unlink`, Ruby `spawn`/`IO.popen`/`Open3`,
+    and `subprocess . run` with spaces around the dot.
+*   **Windows paths** (`winpath.py`). `C:\...`, `c:/...` and MSYS
+    `/c/Users/...` are judged by place: a drive root, `C:\Windows`, a user
+    profile or `Documents`/`.ssh`/`AppData` are denied; files inside
+    `AppData\Local\Temp` are allowed; `..` is resolved first.
+
+### Differences left on purpose (not bugs)
+
+*   **Temp is fair game.** dcg and cc-safety-net block deletions inside
+    `/tmp`, `$TMPDIR` and `AppData\Local\Temp`; pawl allows them and only
+    asks before wiping a whole temp root. Most of pawl's remaining "misses"
+    against dcg are this.
+*   **The workspace is fair game.** `rm -rf ./build`, `rm -rf node_modules`,
+    `find . -delete` inside the repo: dcg and cc-safety-net block every
+    recursive delete, pawl allows deletions that stay inside the git
+    toplevel and asks before the workspace root itself.
+*   **Printing is not deleting.** cc-safety-net blocks a command that only
+    prints dangerous text (`print("rm -rf /")`, `cat <<EOF` of `rm -rf ~`);
+    pawl allows it, because nothing runs.
+*   **git deletions** (`git rm`, `git checkout .`) are the destructive-git
+    gate's job, not this one.
+
+### Narrow gaps still open
+
+*   A `{ ...; } | sh` brace group whose body is built with a heredoc:
+    the newline split in `pipelines()` separates the heredoc from the pipe.
+*   Brace expansion whose group is split by `$IFS` first
+    (`rm{,$IFS-rf$IFS/}`), and `$(printf -- -delete)` fed into `find`.
+*   A `$( )` inside a single-quoted string that spans newlines is scanned
+    anyway, so it can ask when it should allow. The direction is safe, and
+    no real session command hit it.
 
 ## Known misses
 

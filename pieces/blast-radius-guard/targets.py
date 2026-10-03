@@ -24,6 +24,8 @@ import re
 import subprocess
 from typing import Mapping, Optional, Tuple
 
+import winpath
+
 ALLOW, ASK, DENY = 0, 1, 2
 WORDS = {ALLOW: "allow", ASK: "ask", DENY: "deny"}
 UNKNOWN = "\x01"
@@ -147,6 +149,10 @@ def classify(path: str, cwd: Optional[str], policy: Policy) -> Tuple[int, str]:
   if path.startswith(UNKNOWN) or not path:
     return ASK, ("a path that starts with a value pawl cannot resolve;"
                  " empty, it would delete from /")
+  if UNKNOWN not in path:
+    win = winpath.classify(path)
+    if win is not None:
+      return win
   if DRIVE_ROOT_RE.match(path.rstrip("*")):
     return DENY, f"the drive {path}"
   base, children, uncertain = _split_unknown(path)

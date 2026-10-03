@@ -39,19 +39,28 @@ target is judged by where it lands:
 | inside the workspace (the git toplevel of the command's directory), or inside a temp directory | allow |
 
 Followed: script files (`bash x.sh`, `./x`, `source`, `.`, `cat x | sh`,
-`bash < x`, `bash <(...)`), `-c` strings, `eval`, `trap`, functions (with
-`$1` from each call site), `read` loops (values from what feeds them),
+`bash < x`, `bash <(...)`), `-c` strings (bash, and `fish -c`/`-C`/
+`--command` in every spelling), `eval`, `trap`, functions (with `$1` from
+each call site), `read` loops (values from what feeds them), substitutions
+(`$( )`, backticks and unquoted heredoc bodies run as shell),
 `npm`/`pnpm`/`yarn`/`bun` scripts with pre and post hooks, `npx` and `dlx`,
-Makefile and justfile recipes, Python, JavaScript, Ruby, Perl and Go files
-and inline code (their delete calls and their shell-outs), containers (a
-bind mount maps the container path back to the host), `cmd /c` and
-`powershell -Command` / `-EncodedCommand`, and a file this same command
-writes before running it.
+`uv run`/`poetry run`/`conda run` and friends, GNU `parallel`, Makefile and
+justfile recipes, Python, JavaScript, Ruby, Perl and Go files and inline
+code (their delete calls and their shell-outs), containers (a bind mount
+maps the container path back to the host), `cmd /c` and `powershell`
+`-Command` / `-EncodedCommand`, and a file this same command writes before
+running it. Prefixes it sees through: `sudo`, `env`, `timeout`, `nice`,
+`busybox`, `chrt`, `taskset`, `setsid`, `flock`, `watch` and the like, plus
+argv-level brace expansion (`{,rm} -rf /`).
 
 Deleters: `rm`, `rmdir`, `unlink`, `shred`, `rimraf`, `find -delete` and
 `-exec rm`, `xargs rm`, `mv` to `/dev/null` or of a protected folder,
-`rsync --delete`, `dd of=<disk>`, `mkfs`, `wipefs`, `diskutil erase*`, the
-cmd and PowerShell forms, and the delete APIs of each language above.
+`rsync --delete`, `dd of=<path>` (judged where it lands), `mkfs`,
+`wipefs -a`, `diskutil erase*`, the cmd and PowerShell forms, and the delete
+APIs of each language above. Windows paths (`C:\...`, MSYS `/c/...`) are
+judged by place too: drive roots, `C:\Windows`, user profiles and
+`Documents`/`.ssh`/`AppData` are denied, files inside `AppData\Local\Temp`
+allowed.
 
 ## Measured
 
@@ -69,6 +78,14 @@ before the guard was tuned on it; `HILLCLIMB.md` has every round:
 Judging a command takes about a millisecond; following scripts reads at
 most 256 KiB per file and 1 MiB per command.
 
+Scored against the cases three other deletion guards ship for themselves
+(their deletion cases only; `../../eval/blast-compare/external.py`): of the
+commands they block, pawl catches dcg 62/78, shguard 109/125, cc-safety-net
+15/25; of the commands they allow, pawl agrees dcg 82/87, shguard 16/21,
+cc-safety-net 11/12. Most of the remaining gaps are policy, not defects
+(pawl allows temp and workspace deletions, and treats printing as not
+deleting); `HILLCLIMB.md` reads them one by one.
+
 ## Not covered
 
 A deletion whose target is computed at run time (walking a tree), anything
@@ -85,6 +102,7 @@ reads files to follow them and never runs anything.
 | `shellparse.py`, `expand.py` | bash-like parsing and expansion |
 | `targets.py` | where a path lands, and how bad that is |
 | `runs.py`, `code_scan.py`, `argv_util.py` | scripts, package jobs, make and just, other languages, prefixes |
+| `winpath.py` | judges Windows and MSYS paths by place |
 | `blast_radius_hook.py` | PreToolUse hook |
 | `score.py`, `corpus.json`, `holdout*.json` | the scorer and its labelled cases |
 | `test_blast_radius.py`, `test_corpus.py` | rules with twins; the corpus ratchet |

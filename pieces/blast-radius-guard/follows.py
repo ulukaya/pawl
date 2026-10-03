@@ -13,6 +13,7 @@ from __future__ import annotations
 import base64
 import binascii
 import posixpath
+import re
 from typing import List, Optional, Tuple
 
 import code_scan
@@ -20,6 +21,18 @@ import expand
 import runs
 import shellparse
 from targets import UNKNOWN
+
+_PARALLEL_VALUE_OPTS = frozenset({"-I", "-j", "--jobs", "-P", "-N", "--delay",
+                                  "--timeout", "-S", "--sshlogin"})
+_PLACEHOLDER_RE = re.compile(r"\{[^{}]*\}")
+_FISH_CMD_FLAGS = ("--command", "--init-command")
+
+
+def _fish_cmd_flag(flag: str) -> bool:
+  """fish's `--command`/`--init-command`, in full or any abbreviation."""
+  stem = flag.split("=", 1)[0]
+  return stem.startswith("--") and len(stem) > 3 and \
+      any(full.startswith(stem) for full in _FISH_CMD_FLAGS)
 
 
 class FollowRules:
@@ -37,7 +50,8 @@ class FollowRules:
       self.text(shellparse.restore(argv[1], w.substs))
 
   def _eval(self, argv: List[str], w: shellparse.Words, _before) -> None:
-    self.text(shellparse.plain(argv[1:], w.substs))
+    rest = argv[2:] if argv[1:2] == ["--"] else argv[1:]
+    self.text(shellparse.plain(rest, w.substs))
 
   def _args(self, words: List[str], w: shellparse.Words) -> List[str]:
     return [expand.expand(a, w.substs, self.ctx)[0] for a in words]
@@ -115,6 +129,61 @@ class FollowRules:
     stop = self.ctx.policy.workspace
     for job in runs.package_jobs(argv, self.ctx.cwd, stop):
       self.job(job, [], job.label)
+
+  def _fish(self, argv: List[str], w: shellparse.Words,
+            cmd: shellparse.Command, before) -> None:
+    """fish runs code from `-c`/`-C`/`--command`/`--init-command`, also when
+    the value is attached (`-c'...'`), clustered (`-ic'...'`), given with `=`
+    or abbreviated (`--com=`). Every other form is an ordinary shell call."""
+    codes: List[str] = []
+    i = 1
+    while i < len(argv):
+      arg = argv[i]
+      if "=" in arg and (_fish_cmd_flag(arg) or arg.split("=", 1)[0]
+                         in _FISH_CMD_FLAGS):
+        codes.append(arg.split("=", 1)[1])
+      elif arg in _FISH_CMD_FLAGS and i + 1 < len(argv):
+        codes.append(argv[i + 1])
+        i += 1
+      elif arg.startswith("-") and not arg.startswith("--"):
+        pos = next((j for j, ch in enumerate(arg) if j and ch in "cC"), None)
+        if pos is None:
+          pass
+        elif len(arg) > pos + 1:
+          codes.append(arg[pos + 1:])
+        elif i + 1 < len(argv):
+          codes.append(argv[i + 1])
+          i += 1
+      else:
+        break  # a script file or the end of the options
+      i += 1
+    for code in codes:
+      self.text(shellparse.restore(code, w.substs))
+    if not codes:
+      self._shell(argv, w, cmd, before)
+
+  def _parallel(self, argv: List[str], w: shellparse.Words, before) -> None:
+    """GNU `parallel TEMPLATE ::: args`: TEMPLATE run once per arg, with
+    `{}`/`{1}`/`{.}` replaced. Without `:::`, the args come from stdin."""
+    if ":::" in argv:
+      idx = argv.index(":::")
+      template, inputs = argv[1:idx], [a for a in argv[idx + 1:] if a != ":::"]
+    else:
+      template, inputs = argv[1:], None
+    while template and template[0].startswith("-"):
+      template = template[2:] if template[0] in _PARALLEL_VALUE_OPTS \
+          else template[1:]
+    if not template:
+      return
+    tmpl = shellparse.plain(template, w.substs)
+    if inputs is not None:
+      args = [v for a in inputs for v in expand.expand(a, w.substs, self.ctx)]
+    else:
+      args = self._listed(before) if before else [UNKNOWN]
+    for arg in args[:8]:
+      run = _PLACEHOLDER_RE.sub(lambda _m, a=arg: a, tmpl) if "{" in tmpl \
+          else f"{tmpl} {arg}"
+      self.text(run)
 
   def _just(self, argv: List[str], w: shellparse.Words, _before) -> None:
     def read(path):

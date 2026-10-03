@@ -40,6 +40,48 @@ Run on 2026-10-03, Linux, each guard at its default level unless named:
     of its 61 false alarms; that is a deliberate trade, and its packs cover
     databases, clouds and Kubernetes, which these cases do not test.
 
+## On other projects' own corpora
+
+`compare.py` scores every guard on pawl's cases. `external.py` does the
+reverse: it reads the labelled cases three other guards ship for *themselves*
+and reports where pawl agrees, so the home-field advantage runs the other
+way. It keeps only their deletion-related cases; a case they block counts as
+caught when pawl denies or asks, a case they allow counts as agreed when
+pawl allows. Nothing runs — commands are judged in a fake home.
+
+| Their corpus | Their blocks pawl catches | Their allows pawl allows |
+| --- | --- | --- |
+| dcg 0.15.2 | 62/78 (79%) | 82/87 (94%) |
+| shguard | 109/125 (87%) | 16/21 (76%) |
+| cc-safety-net | 15/25 (60%) | 11/12 (92%) |
+
+Run on 2026-10-03. These are not pawl's cases, so the misses are worth
+reading, and most are deliberate policy differences, not defects:
+
+*   **Temp and the workspace are fair game for pawl.** dcg and cc-safety-net
+    block every recursive delete and distrust `/tmp`/`$TMPDIR`; pawl allows
+    deletions that stay inside the git toplevel or a temp directory and asks
+    before a whole temp root or the workspace root. This is most of pawl's
+    "they block, pawl allows".
+*   **Printing is not deleting.** cc-safety-net blocks a command that only
+    prints `rm -rf /`; pawl allows it, because nothing runs.
+*   **git deletions** (`git rm`) belong to pawl's destructive-git gate.
+*   **shguard's `rm -rf ~/subdir/*` and `../build/*`** are allowed by
+    shguard and asked by pawl: outside the workspace, in your home or its
+    parent, pawl wants a human to look.
+
+`pieces/blast-radius-guard/HILLCLIMB.md` lists what the first run of this
+comparison taught pawl (substitutions, brace expansion, more runners, fish,
+`dd`/`wipefs`, more language APIs, Windows paths) and the gaps left open.
+
+```bash
+# clone the three guards next to each other, then:
+python3 eval/blast-compare/external.py \
+  --dcg path/to/destructive_command_guard \
+  --shguard path/to/shguard \
+  --ccsn path/to/claude-code-safety-net --verbose
+```
+
 ## Run it
 
 ```bash

@@ -162,9 +162,25 @@ class Scanner(deletes.DeleteRules, follows.FollowRules):
     printed = expand.static_output(before[-1:], self.ctx)
     return [p for text in printed for p in text.split()] or [UNKNOWN]
 
+  def _run_substs(self, bodies: List[str]) -> None:
+    """Scans each `$( )`, `<( )` or backtick body: it runs in a subshell, so
+    cwd changes inside it do not leak out, but its deletions are real."""
+    if not bodies or self.ctx.depth > MAX_DEPTH:
+      return
+    saved_cwd, self.ctx.depth = self.ctx.cwd, self.ctx.depth + 1
+    mark = shellparse.PROC_MARK
+    for body in bodies:
+      inner = body[len(mark):] if body.startswith(mark) else body
+      self.text(inner)
+      self.ctx.cwd = saved_cwd
+    self.ctx.depth -= 1
+
   def _command(self, cmd: shellparse.Command,
                before: List[shellparse.Command],
                w: shellparse.Words) -> None:
+    self._run_substs(w.substs)
+    if cmd.heredoc is not None and cmd.heredoc_expands:
+      self._run_substs(shellparse.substitutions(cmd.heredoc))
     argv = argv_util.strip_keywords(list(w.argv))
     if argv and argv[0] in DECLARES:
       return
@@ -174,6 +190,11 @@ class Scanner(deletes.DeleteRules, follows.FollowRules):
       return
     self._remember_writes(cmd, w)
     head = expand.expand(argv[0], w.substs, self.ctx)
+    while argv and head == [""]:  # `$X rm ...` with X empty: X leaves no word
+      argv = argv[1:]
+      head = expand.expand(argv[0], w.substs, self.ctx) if argv else [""]
+    if not argv:
+      return
     spelled = next((h for h in head if " " in h.strip()), None)
     if spelled:  # $(echo cm0g... | base64 -d): the command is a value
       self.text(spelled + " " + shellparse.plain(argv[1:], w.substs))
@@ -211,7 +232,7 @@ class Scanner(deletes.DeleteRules, follows.FollowRules):
         "cmd": self._cmd, "cmd.exe": self._cmd,
         "powershell": self._powershell, "powershell.exe": self._powershell,
         "pwsh": self._powershell, "just": self._just,
-        "diskutil": self._diskutil,
+        "diskutil": self._diskutil, "parallel": self._parallel,
     }.get(name)
     runner = argv_util.runner_argv(argv)
     if runner is not None:
@@ -220,13 +241,18 @@ class Scanner(deletes.DeleteRules, follows.FollowRules):
       return
     if WIN_DELETE_RE.match(cmd.text) and re.search(r"(?i)\s/s\b|-recurse",
                                                      cmd.text):
-      self._windows(cmd.text)
+      self._windows(cmd.text, argv, w)
     elif handler:
       handler(argv, w, before)
     elif name in DELETERS:
       self._delete(argv, w, cmd.text)
     elif DISK_TOOLS.match(name):
+      if name == "wipefs" and not any(a.startswith(("-a", "-o", "--all"))
+                                      for a in argv[1:]):
+        return  # `wipefs DEV` only prints signatures; -a/-o erase them
       self._disk([a for a in argv[1:] if not a.startswith("-")], cmd.text)
+    elif name == "fish":
+      self._fish(argv, w, cmd, before)
     elif name in runs.SHELLS:
       self._shell(argv, w, cmd, before)
     elif name in runs.INTERPRETERS:

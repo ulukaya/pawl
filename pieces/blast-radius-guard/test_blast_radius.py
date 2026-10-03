@@ -113,6 +113,100 @@ def test_mentions_are_not_deletions(ws: Path, cmd: str) -> None:
   assert decide(ws, cmd) == "allow"
 
 
+# --- substitutions, braces and empty words run too ---------------------------
+
+
+@pytest.mark.parametrize("cmd", [
+    "echo $(rm -rf ~)", "env -C /tmp/$(rm -rf /) git status",
+    "sudo -u $(rm -rf ~) id", "echo `rm -rf /`",
+    "{,rm} -rf /", "{rm,-rf,/}", "X=; $X rm -rf /", "''${IFS}rm -rf /",
+])
+def test_substitutions_and_braces_run(ws: Path, cmd: str) -> None:
+  assert decide(ws, cmd) == "deny"
+
+
+@pytest.mark.parametrize("cmd", [
+    "echo '$(rm -rf ~)'", "echo {a,b}", "rm -f ./{}",
+])
+def test_quoted_or_harmless_expansions_allow(ws: Path, cmd: str) -> None:
+  assert decide(ws, cmd) == "allow"
+
+
+def test_unquoted_heredoc_substitution_runs(ws: Path) -> None:
+  assert decide(ws, "git commit -F - <<EOF\n$(rm -rf ~)\nEOF") == "deny"
+  assert decide(ws, "cat <<'EOF'\n$(rm -rf ~)\nEOF") == "allow"
+
+
+# --- prefixes, runners and GNU parallel --------------------------------------
+
+
+@pytest.mark.parametrize("cmd", [
+    "busybox rm -rf /", "chrt -f 99 rm -rf /", "taskset 0x1 rm -rf /",
+    "eval -- rm -rf /", "setsid rm -rf ~", "flock /tmp/l rm -rf /",
+    "watch -n 2 rm -rf ~", "parallel rm -rf {1} ::: /",
+    "uv run python -c \"import shutil; shutil.rmtree('/etc')\"",
+])
+def test_prefixes_and_runners_reach_the_command(ws: Path, cmd: str) -> None:
+  assert decide(ws, cmd) == "deny"
+
+
+def test_prefixes_keep_safe_targets_safe(ws: Path) -> None:
+  assert decide(ws, "nice -n 5 rm -rf build") == "allow"
+  assert decide(ws, "parallel rm -rf {1} ::: build") == "allow"
+
+
+# --- fish command flags ------------------------------------------------------
+
+
+@pytest.mark.parametrize("cmd", [
+    "fish -c 'rm -rf /'", "fish -C 'rm -rf ~'", "fish --command='rm -rf /'",
+    "fish -c'rm -rf /'", "fish -ic'rm -rf /'", "fish --com='rm -rf ~'",
+    "fish -c ls -c 'rm -rf /'",
+])
+def test_fish_command_flags(ws: Path, cmd: str) -> None:
+  assert decide(ws, cmd) == "deny"
+
+
+# --- disks, dd and code APIs -------------------------------------------------
+
+
+def test_dd_and_wipefs(ws: Path) -> None:
+  assert decide(ws, "dd if=/dev/zero of=/dev/sda") == "deny"
+  assert decide(ws, "dd if=/dev/zero of=//dev/sda") == "deny"
+  assert decide(ws, "dd of=/etc/passwd if=/dev/zero") == "ask"
+  assert decide(ws, "wipefs -a /dev/sda") == "deny"
+  assert decide(ws, "wipefs /dev/sda") == "allow"  # read-only without -a/-o
+  assert decide(ws, "dd if=seed of=out.img") == "allow"
+
+
+@pytest.mark.parametrize("cmd,expect", [
+    ("perl -e \"unlink '/etc/passwd'\"", "ask"),
+    ("ruby -e 'spawn \"rm -rf /\"'", "deny"),
+    ("ruby -e 'IO.popen(\"rm -rf /\")'", "deny"),
+    ("python3 -c 'import subprocess; subprocess . run(\"rm -rf /\")'", "deny"),
+])
+def test_language_delete_and_shell_apis(ws: Path, cmd: str,
+                                        expect: str) -> None:
+  assert decide(ws, cmd) == expect
+
+
+# --- Windows paths -----------------------------------------------------------
+
+
+@pytest.mark.parametrize("cmd,expect", [
+    (r"rm -rf C:\Windows\Temp\x", "deny"),
+    (r"rm -rf C:\Users\u\AppData\Local\Temp\..\..\Documents", "deny"),
+    (r"Remove-Item -Recurse -Force C:\Users\u\Documents", "deny"),
+    (r"Remove-Item -Recurse -Force $env:USERPROFILE", "deny"),
+    (r"del /s /q C:\*", "deny"),
+    (r"Remove-Item -Recurse -Force C:\Users\u\AppData\Local\Temp\x", "allow"),
+    ("rm -rf /c/Users/u/AppData/Local/Temp/some/file", "allow"),
+    ("Remove-Item build -Recurse -Force", "allow"),
+])
+def test_windows_paths(ws: Path, cmd: str, expect: str) -> None:
+  assert decide(ws, cmd) == expect
+
+
 # --- what a command runs -------------------------------------------------------
 
 
