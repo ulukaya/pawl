@@ -132,6 +132,17 @@ class ClaudeCodeTest(HarnessCase):
           "[PAWL git] [DESTRUCTIVE GIT] `git "), cmd)
     self.assertIsNone(self.pre("Bash", {"command": "git push origin main"}))
 
+  def test_home_wipe_hidden_in_a_script_is_denied(self) -> None:
+    self.env["HOME"] = str(self.tmp / "home")
+    (self.project / "clean.sh").write_text("rm -rf build\nrm -rf ~/\n")
+    spec = self.pre("Bash", {"command": "bash clean.sh"})
+    self.assertEqual(spec["permissionDecision"], "deny")
+    self.assertTrue(spec["permissionDecisionReason"].startswith(
+        "[PAWL blast] `bash clean.sh` runs `rm -rf ~/`"))
+    spec = self.pre("Bash", {"command": "rm -rf ~/elsewhere"})
+    self.assertEqual(spec["permissionDecision"], "ask")
+    self.assertIsNone(self.pre("Bash", {"command": "rm -rf build"}))
+
   def test_poll_loop_asks_the_user(self) -> None:
     spec = self.pre("Bash", {"command": "tail -f server.log"})
     self.assertEqual(spec["permissionDecision"], "ask")
@@ -301,6 +312,16 @@ class CodexTest(HarnessCase):
     self.assertEqual(spec["permissionDecision"], "allow")
     self.assertEqual(spec["updatedInput"],
                      {"command": patch.replace("\u200b", "")})
+
+  def test_blast_asks_become_denies_with_the_reason(self) -> None:
+    self.env["HOME"] = str(self.tmp / "home")
+    spec = self.pre("Bash", {"command": "rm -rf ~/elsewhere"})
+    self.assertEqual(spec["permissionDecision"], "deny")
+    self.assertIn("[PAWL blast]", spec["permissionDecisionReason"])
+    self.assertIn("Codex hooks cannot ask", spec["permissionDecisionReason"])
+    spec = self.pre("Bash", {"command": "python3 -c \"import shutil, os;"
+                                        " shutil.rmtree(os.path.expanduser('~'))\""})
+    self.assertEqual(spec["permissionDecision"], "deny")
 
   def test_third_identical_call_is_denied(self) -> None:
     for _ in range(2):

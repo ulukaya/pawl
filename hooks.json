@@ -29,6 +29,21 @@
       }
     ]
   },
+  "pawl-blast-radius-guard": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": "run_command|run_shell_command",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -B hooks/pawl.py pre --only blast --harness antigravity",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
   "pawl-poll-loop-guard": {
     "enabled": true,
     "PreToolUse": [

@@ -19,7 +19,8 @@ any overwrite carried along unless the call is denied. harness.render()
 writes it in the calling harness's format; the exit code is always 0.
 
 Failure modes: stdin that is not a JSON object denies when a fail-closed
-gate (git, poll) is in the run, else allows. A gate that raises allows,
+gate (git, poll) is in the run, else allows. The blast gate never raises:
+an analysis it cannot finish asks. A gate that raises allows,
 except git and poll, which deny. A run past the watchdog budget (the lowest
 of the gates' own *_WATCHDOG_S settings, default 14 s) allows: a hook must
 never stall the host. No path prints a traceback.

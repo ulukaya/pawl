@@ -11,7 +11,7 @@ Deterministic gates for coding agents, as one plugin for **Claude Code**,
 **OpenAI Codex** and **Antigravity**.
 
 Agents make the same mistakes over and over, and telling them not to in the
-prompt stops working after a page. `pawl` is sixteen small checks that run as
+prompt stops working after a page. `pawl` is seventeen small checks that run as
 code, not as instructions, and a report command that tallies what they blocked.
 Each check watches for one mistake and refuses it, cleans it up, or (for
 provably read-only commands) waves it through without a prompt. Plain Python
@@ -30,7 +30,7 @@ No install, no harness, nothing written outside a scratch directory:
 git clone https://github.com/ulukaya/pawl && python3 pawl/hooks/pawl.py demo
 ```
 
-It sends ten calls through the real dispatcher, each written the way
+It sends eleven calls through the real dispatcher, each written the way
 Antigravity, Claude Code and Codex send it, and prints what each harness
 is told:
 
@@ -40,6 +40,7 @@ call                        gate        antigravity      claude code      codex
 make build                  -           allow            silent           silent
 git log --oneline -5        readonly    auto_approve     allow            silent
 git reset --hard            git         force_ask        ask              deny
+script that runs rm -rf ~/  blast       deny             deny             deny
 tail -f server.log          poll        force_ask        ask              deny
 same pytest run, 3rd time   loop        force_ask        ask              deny
 edit that changes nothing   noop        deny             deny             deny
@@ -58,6 +59,7 @@ reason, `--json` every raw answer.
 
 | The mistake | What pawl does | Gate |
 | --- | --- | --- |
+| Deletes home, root, a drive or ~/Documents, directly or from a script, `trap`, `npm run`, Makefile, `python -c` or container it runs | Refuses; asks before anything else outside the workspace | `blast` |
 | Runs `git reset --hard`, `git clean -fdx`, `git commit --no-verify`, `git push --force` or `git branch -D` and loses work | Asks the human first | `git` |
 | Runs `while true; do sleep`, `tail -f` or `sleep 3600` and hangs | Asks the human first | `poll` |
 | Calls the same tool with the same arguments in a loop | Asks before the third identical call | `loop` |
@@ -75,7 +77,7 @@ reason, `--json` every raw answer.
 | Claims a bug is fixed without proving it | Requires the test to fail before the fix | `repro_fence.py` |
 | Grows always-on prompt files until they cost more than they help | Caps their token size | `prompt_budget.py` |
 
-The first twelve rows are hook gates that fire on their own; the last four
+The first thirteen rows are hook gates that fire on their own; the last four
 are CLIs for pre-commit, CI and cron. Every piece also runs on its own: see
 `pieces/<name>/README.md`.
 
@@ -183,6 +185,7 @@ send-budget unit. Every answer exits 0; no path prints a traceback.
 | --- | --- | --- | --- | --- | --- |
 | `fence` | every tool | open | `brain/`, `conversations/` | `~/.claude/projects/` | `~/.codex/sessions/` |
 | `git` | shell | closed | yes | yes | yes (deny) |
+| `blast` | shell | open (an unfinished analysis asks) | yes | yes | yes (ask is deny) |
 | `poll` | shell | closed | yes | yes | yes (deny) |
 | `noop` | edits | open | `replace_file_content` | `Edit` | `apply_patch` |
 | `zero-width` | writes, edits | open | yes | `Write`, `Edit` | `apply_patch` |
@@ -236,6 +239,7 @@ every file pawl reads and writes.
 | prose-gate | gate `send`, CI on docs | `pieces/prose-gate/prose_gate.py --plane chat draft.md` |
 | egress-firewall | gate `send` | `pieces/egress-firewall/egress_firewall.py check < text` |
 | send-budget | gate `send` | `pieces/send-budget/send_budget.py status` |
+| blast-radius-guard | gate `blast` | `pieces/blast-radius-guard/blast_radius.py check --cwd . -- bash cleanup.sh` |
 | destructive-git-guard | gate `git` | `pieces/destructive-git-guard/destructive_git_guard.py check --cwd . git reset --hard` |
 | poll-loop-guard | gate `poll` | `pieces/poll-loop-guard/poll_loop_guard.py classify "while true; do sleep 5; done"` |
 | oscillation-breaker | gate `loop` | `pieces/oscillation-breaker/oscillation_breaker.py check <conversation-id> view_file '{"path": "a"}'` |

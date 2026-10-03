@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""demo.py: pawl's gates on ten canned calls, in all three harnesses.
+"""demo.py: pawl's gates on eleven canned calls, in all three harnesses.
 
     python3 hooks/pawl.py demo [--verbose | --json]
 
@@ -51,6 +51,8 @@ SCENARIOS = (
     Scenario("make build", "shell", ("make build",)),
     Scenario("git log --oneline -5", "shell", ("git log --oneline -5",)),
     Scenario("git reset --hard", "shell", ("git reset --hard",)),
+    Scenario("script that runs rm -rf ~/", "shell",
+             ("cat > clean.sh <<'EOF'\nrm -rf build ~/\nEOF\nbash clean.sh",)),
     Scenario("tail -f server.log", "shell", ("tail -f server.log",)),
     Scenario("same pytest run, 3rd time", "shell",
              ("pytest -q tests/test_x.py",), 3),

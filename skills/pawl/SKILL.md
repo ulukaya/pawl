@@ -1,6 +1,6 @@
 ---
 name: pawl
-description: "Deterministic gates for agent harnesses. Use when a call is denied, prompted or blocked with a [PAWL egress|prose|budget|git|poll|loop|no-op|reread|fence] or [IDLE TASK] reason, or before sending a message, discarding git work, waiting on a background task, fixing a bug with a reproducer, or growing an always-loaded prompt file."
+description: "Deterministic gates for agent harnesses. Use when a call is denied, prompted or blocked with a [PAWL blast|egress|prose|budget|git|poll|loop|no-op|reread|fence] or [IDLE TASK] reason, or before sending a message, discarding git work, waiting on a background task, fixing a bug with a reproducer, or growing an always-loaded prompt file."
 ---
 
 # pawl
@@ -12,6 +12,7 @@ lives under `PAWL_DATA` (default `~/.pawl`).
 ## Denial prefixes
 
 -   `[PAWL egress]`, `[PAWL prose]`, `[PAWL budget]` -> `send-gates.md`
+-   `[PAWL blast]` -> `blast-radius-guard.md`
 -   `[PAWL git]` -> `destructive-git-guard.md`
 -   `[PAWL poll]` -> `poll-loop-guard.md`
 -   `[PAWL loop]` -> `oscillation-breaker.md`
@@ -26,6 +27,9 @@ Each arrow names the page to read under `references/` beside this file.
 
 -   Send (chat, mail, social post): gate `send`, egress then prose then
     budget -> `send-gates.md`
+-   A deletion outside the workspace, or of home, root or a drive, in a
+    command or in what it runs: gate `blast` denies or asks ->
+    `blast-radius-guard.md`
 -   Destructive `git` in a protected repo, `git commit -n`, a worktree on
     tmpfs, a force push, `git branch -D`: gate `git` asks; by hand
     `destructive_git_guard.py check` -> `destructive-git-guard.md`

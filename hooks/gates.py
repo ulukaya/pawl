@@ -143,6 +143,8 @@ GATES: Tuple[Gate, ...] = (
          pre=_decide("fence")),
     Gate("git", "destructive-git-guard", "destructive_git_guard", SHELL,
          pre=_guard("[PAWL git]", "git"), fail_closed=True),
+    Gate("blast", "blast-radius-guard", "blast_radius", SHELL,
+         pre=_decide("blast")),
     Gate("poll", "poll-loop-guard", "poll_loop_guard", SHELL,
          pre=_guard("[PAWL poll]", "poll"), fail_closed=True),
     Gate("noop", "noop-edit-guard", "noop_edit_guard", WRITES,

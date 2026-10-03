@@ -14,7 +14,11 @@ unless you copy it somewhere yourself.
     columns (a conversation id and its parent), and `/proc`, to find this
     conversation's background tasks.
 *   The output of `git rev-parse --show-toplevel`, to learn which repo a git
-    command targets.
+    command targets and where the workspace ends.
+*   The scripts a shell command would run (a script file, `package.json`, a
+    Makefile or justfile, a Python, JavaScript, Ruby, Perl or Go file), read
+    as text, at most 256 KiB each and 1 MiB per command, to see what they
+    delete. pawl never runs them.
 
 ## What it writes
 

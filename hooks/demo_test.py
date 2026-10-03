@@ -31,6 +31,7 @@ EXPECTED: Dict[str, Tuple[str, str, str, str]] = {
     "make build": ("-", "allow", "silent", "silent"),
     "git log --oneline -5": ("readonly", "auto_approve", "allow", "silent"),
     "git reset --hard": ("git", "force_ask", "ask", "deny"),
+    "script that runs rm -rf ~/": ("blast", "deny", "deny", "deny"),
     "tail -f server.log": ("poll", "force_ask", "ask", "deny"),
     "same pytest run, 3rd time": ("loop", "force_ask", "ask", "deny"),
     "edit that changes nothing": ("noop", "deny", "deny", "deny"),

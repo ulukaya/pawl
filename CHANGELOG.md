@@ -36,6 +36,14 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
 
 ### Added
 
+*   Gate `blast` (pieces/blast-radius-guard): judges a shell command by
+    what it would delete, after following what it runs: script files,
+    traps, functions, `read` loops, package scripts, Makefile and justfile
+    recipes, Python/JS/Ruby/Perl/Go code and shell-outs, container mounts,
+    `cmd /c` and PowerShell, and GuardFall spellings. Home, root, system
+    folders, `~/.ssh`-class folders and drives deny; anything else outside
+    the workspace asks. Five labelled corpora (329 cases, four held out
+    before tuning) and a 472-command real-session replay; see HILLCLIMB.md.
 *   `hooks/pawl.py`: one entry point, `pre` / `stop`, with `--harness` and
     `--only`. Gates run in one process, stop at the first deny, and merge
     deny > ask > approve > allow. `PAWL_DISABLE` takes any gate name.
@@ -90,7 +98,7 @@ for Claude Code and Codex, and the gates taught each harness's shapes.
     `pr`), `which`, `type`, `uname` and `arch`.
 *   The `noop` gate refuses a whole-file write (`write_to_file`, Claude
     Code's `Write`) of the bytes the file already holds.
-*   `pawl.py demo`: ten canned calls through the real dispatcher in all
+*   `pawl.py demo`: eleven canned calls through the real dispatcher in all
     three harnesses' shapes, printed as a decision matrix (`--verbose`,
     `--json`); runs in a scratch tree, ignores the user's settings.
 *   CI: Python 3.14 and a ruff (pyflakes, bugbear) job.
